@@ -15,4 +15,4 @@ jobs:
           go-version: '1.21'
 
       - name: Build
-        run: go build -v ./src
+        run: ./build.sh
