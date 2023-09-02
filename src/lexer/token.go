@@ -76,6 +76,10 @@ const (
     TT_KW_To                   TokenType = "TT_KW_To"
     TT_KW_For                  TokenType = "TT_KW_For"
     TT_KW_Loop                 TokenType = "TT_KW_Loop"
+    TT_KW_If                   TokenType = "TT_KW_If"
+    TT_KW_Else                 TokenType = "TT_KW_Else"
+    TT_KW_True                 TokenType = "TT_KW_True"
+    TT_KW_False                TokenType = "TT_KW_False"
 
     // Identifiers
     TT_Identifier              TokenType = "TT_Identifier"
@@ -93,6 +97,8 @@ var Keywords = map[string]TokenType {
     "to":       TT_KW_To,
     "for":      TT_KW_For,
     "loop":     TT_KW_Loop,
+    "true":     TT_KW_True,
+    "false":    TT_KW_False,
 }
 
 var Symbols = map[string]TokenType {
