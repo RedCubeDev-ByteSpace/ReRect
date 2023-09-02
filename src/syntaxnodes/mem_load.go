@@ -15,8 +15,8 @@ type LoadNode struct {
     Included bool
 }
 
-func NewLoadNode(loadkw lexer.Token, lib lexer.Token, includekw lexer.Token, included bool) LoadNode {
-    return LoadNode{
+func NewLoadNode(loadkw lexer.Token, lib lexer.Token, includekw lexer.Token, included bool) *LoadNode {
+    return &LoadNode{
         LoadKw: loadkw,
         Library: lib,
         IncludeKw: includekw,

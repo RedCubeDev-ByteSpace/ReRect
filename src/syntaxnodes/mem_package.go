@@ -12,8 +12,8 @@ type PackageNode struct {
     PackageName lexer.Token
 }
 
-func NewPackageNode(packagekw lexer.Token, pck lexer.Token) PackageNode {
-    return PackageNode{
+func NewPackageNode(packagekw lexer.Token, pck lexer.Token) *PackageNode {
+    return &PackageNode{
         PackageKw: packagekw,
         PackageName: pck,
     }

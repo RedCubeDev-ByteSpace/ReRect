@@ -11,8 +11,8 @@ type LiteralExpressionNode struct {
     Literal lexer.Token
 }
 
-func NewLiteralExpressionNode(lit lexer.Token) LiteralExpressionNode {
-    return LiteralExpressionNode{
+func NewLiteralExpressionNode(lit lexer.Token) *LiteralExpressionNode {
+    return &LiteralExpressionNode{
         Literal: lit,
     }
 }

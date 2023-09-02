@@ -12,8 +12,8 @@ type AssignmentExpressionNode struct {
     Expression ExpressionNode
 }
 
-func NewAssignmentExpressionNode(varname lexer.Token, expr ExpressionNode) AssignmentExpressionNode {
-    return AssignmentExpressionNode{
+func NewAssignmentExpressionNode(varname lexer.Token, expr ExpressionNode) *AssignmentExpressionNode {
+    return &AssignmentExpressionNode{
         VarName: varname,
         Expression: expr,
     }

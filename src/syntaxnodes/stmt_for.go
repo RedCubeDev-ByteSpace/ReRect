@@ -15,8 +15,8 @@ type ForStatementNode struct {
     Body StatementNode
 }
 
-func NewForStatementNode(forkw lexer.Token, decl StatementNode, cond ExpressionNode, act StatementNode, body StatementNode) ForStatementNode {
-    return ForStatementNode{
+func NewForStatementNode(forkw lexer.Token, decl StatementNode, cond ExpressionNode, act StatementNode, body StatementNode) *ForStatementNode {
+    return &ForStatementNode{
         ForKw: forkw,
         Declaration: decl,
         Condition: cond,

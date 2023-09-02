@@ -12,8 +12,8 @@ type TypeClauseNode struct {
     SubTypes []*TypeClauseNode
 }
 
-func NewTypeClauseNode(typname lexer.Token, subtypes []*TypeClauseNode) TypeClauseNode {
-    return TypeClauseNode{
+func NewTypeClauseNode(typname lexer.Token, subtypes []*TypeClauseNode) *TypeClauseNode {
+    return &TypeClauseNode{
         TypeName: typname,
         SubTypes: subtypes,
     }

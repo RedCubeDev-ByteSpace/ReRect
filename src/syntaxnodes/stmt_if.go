@@ -15,8 +15,8 @@ type IfStatementNode struct {
     HasElseClause bool
 }
 
-func NewIfStatementNode(ifkw lexer.Token, expr ExpressionNode, body StatementNode, els StatementNode, haselse bool) IfStatementNode {
-    return IfStatementNode{
+func NewIfStatementNode(ifkw lexer.Token, expr ExpressionNode, body StatementNode, els StatementNode, haselse bool) *IfStatementNode {
+    return &IfStatementNode{
         IfKw: ifkw,
         Expression: expr,
         Body: body,

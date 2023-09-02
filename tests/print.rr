@@ -7,7 +7,7 @@ function main() {
 
 function gaming(aaa bool) int {
     if (aaa) {
-        return 100;
+        return (100 + 200);
     } else {
         return 200;
     }

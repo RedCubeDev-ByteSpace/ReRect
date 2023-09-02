@@ -5,7 +5,9 @@
 package error
 
 import (
-    "bytespace.network/rerect/span"
+	"fmt"
+
+	"bytespace.network/rerect/span"
 )
 
 // The error struct
@@ -16,11 +18,11 @@ type Error struct {
     Message  string
 }
 
-func NewError(unit CompUnit, pos span.Span, msg string) Error {
+func NewError(unit CompUnit, pos span.Span, msg string, prm ...any) Error {
     return Error {
         Unit: unit,
         Position: pos,
-        Message: msg,
+        Message: fmt.Sprintf(msg, prm...),
     }
 }
 

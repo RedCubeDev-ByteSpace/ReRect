@@ -10,8 +10,8 @@ type ExpressionStatementNode struct {
     Expression ExpressionNode
 }
 
-func NewExpressionStatementNode(expr ExpressionNode) ExpressionStatementNode {
-    return ExpressionStatementNode{
+func NewExpressionStatementNode(expr ExpressionNode) *ExpressionStatementNode {
+    return &ExpressionStatementNode{
         Expression: expr,
     }
 }

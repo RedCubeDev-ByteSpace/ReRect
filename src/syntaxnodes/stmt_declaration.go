@@ -11,15 +11,15 @@ type DeclarationStatementNode struct {
     VarKw lexer.Token
     VarName lexer.Token
 
-    VarType TypeClauseNode
+    VarType *TypeClauseNode
     HasExplicitType bool
 
     Initializer ExpressionNode
     HasInitializer bool
 }
 
-func NewDeclarationStatementNode(varkw lexer.Token, varname lexer.Token, typ TypeClauseNode, hastyp bool, init ExpressionNode, hasinit bool) DeclarationStatementNode {
-    return DeclarationStatementNode{
+func NewDeclarationStatementNode(varkw lexer.Token, varname lexer.Token, typ *TypeClauseNode, hastyp bool, init ExpressionNode, hasinit bool) *DeclarationStatementNode {
+    return &DeclarationStatementNode{
         VarKw: varkw,
         VarName: varname,
         VarType: typ,

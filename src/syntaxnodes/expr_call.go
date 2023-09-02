@@ -13,8 +13,8 @@ type CallExpressionNode struct {
     CloseParam lexer.Token
 }
 
-func NewCallExpressionNode(id lexer.Token, param []ExpressionNode, cprm lexer.Token) CallExpressionNode {
-    return CallExpressionNode{
+func NewCallExpressionNode(id lexer.Token, param []ExpressionNode, cprm lexer.Token) *CallExpressionNode {
+    return &CallExpressionNode{
         Identifier: id,
         Parameters: param,
         CloseParam: cprm,

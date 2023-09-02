@@ -33,6 +33,7 @@ const (
 
     // Punctuation
     TT_Semicolon               TokenType = "TT_Semicolon"
+    TT_Colon                   TokenType = "TT_Colon"
     TT_Comma                   TokenType = "TT_Comma"
     TT_OpenParenthesis         TokenType = "TT_OpenParenthesis"
     TT_CloseParenthesis        TokenType = "TT_CloseParenthesis"
@@ -58,6 +59,8 @@ const (
     TT_GreaterThan             TokenType = "TT_GreaterThan"
     TT_LessEqual               TokenType = "TT_LessEqual"
     TT_GreaterEqual            TokenType = "TT_GreaterEqual"
+    TT_Ampersands              TokenType = "TT_Ampersands"
+    TT_Pipes                   TokenType = "TT_Pipes"
 
     // Literals
     TT_String                  TokenType = "TT_String" 
@@ -99,6 +102,8 @@ var Keywords = map[string]TokenType {
     "loop":     TT_KW_Loop,
     "true":     TT_KW_True,
     "false":    TT_KW_False,
+    "if":       TT_KW_If,
+    "else":     TT_KW_Else,
 }
 
 var Symbols = map[string]TokenType {
@@ -116,6 +121,8 @@ var Symbols = map[string]TokenType {
     "<-": TT_LeftArrow,
     "->": TT_RightArrow,
     "::": TT_Package,
+    "&&": TT_Ampersands,
+    "||": TT_Pipes,
 
     "(" : TT_OpenParenthesis,
     ")" : TT_CloseParenthesis,
@@ -126,4 +133,5 @@ var Symbols = map[string]TokenType {
 
     "," : TT_Comma,
     ";" : TT_Semicolon,
+    ":" : TT_Colon,
 }

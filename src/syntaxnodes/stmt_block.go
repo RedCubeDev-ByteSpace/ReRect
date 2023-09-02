@@ -13,8 +13,8 @@ type BlockStatementNode struct {
     CloseBrace lexer.Token
 }
 
-func NewBlockStatementNode(openbrace lexer.Token, stmts []StatementNode, closebrace lexer.Token) BlockStatementNode {
-    return BlockStatementNode{
+func NewBlockStatementNode(openbrace lexer.Token, stmts []StatementNode, closebrace lexer.Token) *BlockStatementNode {
+    return &BlockStatementNode{
         OpenBrace: openbrace,
         Statements: stmts,
         CloseBrace: closebrace,

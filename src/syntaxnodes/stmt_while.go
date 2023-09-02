@@ -13,8 +13,8 @@ type WhileStatementNode struct {
     Body StatementNode
 }
 
-func NewWhileStatementNode(whilekw lexer.Token, expr ExpressionNode, body StatementNode) WhileStatementNode {
-    return WhileStatementNode{
+func NewWhileStatementNode(whilekw lexer.Token, expr ExpressionNode, body StatementNode) *WhileStatementNode {
+    return &WhileStatementNode{
         WhileKw: whilekw,
         Expression: expr,
         Body: body,

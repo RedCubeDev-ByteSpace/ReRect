@@ -14,8 +14,8 @@ type ReturnStatementNode struct {
     HasExpression bool
 }
 
-func NewReturnStatementNode(retkw lexer.Token, expr ExpressionNode, hasexpr bool) ReturnStatementNode {
-    return ReturnStatementNode{
+func NewReturnStatementNode(retkw lexer.Token, expr ExpressionNode, hasexpr bool) *ReturnStatementNode {
+    return &ReturnStatementNode{
         ReturnKw: retkw,
         Expression: expr,
         HasExpression: hasexpr,

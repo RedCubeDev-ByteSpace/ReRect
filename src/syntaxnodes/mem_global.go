@@ -10,11 +10,11 @@ type GlobalNode struct {
 
     VarKw lexer.Token
     GlobalName lexer.Token
-    VarType TypeClauseNode
+    VarType *TypeClauseNode
 }
 
-func NewGlobalNode(varkw lexer.Token, glbname lexer.Token, typ TypeClauseNode) GlobalNode {
-    return GlobalNode{
+func NewGlobalNode(varkw lexer.Token, glbname lexer.Token, typ *TypeClauseNode) *GlobalNode {
+    return &GlobalNode{
         VarKw: varkw,
         GlobalName: glbname,
         VarType: typ,

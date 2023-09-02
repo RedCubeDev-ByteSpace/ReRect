@@ -13,8 +13,8 @@ type LoopStatementNode struct {
     Body StatementNode
 }
 
-func NewLoopStatementNode(loopkw lexer.Token, expr ExpressionNode, body StatementNode) LoopStatementNode {
-    return LoopStatementNode{
+func NewLoopStatementNode(loopkw lexer.Token, expr ExpressionNode, body StatementNode) *LoopStatementNode {
+    return &LoopStatementNode{
         LoopKw: loopkw,
         Expression: expr,
         Body: body,

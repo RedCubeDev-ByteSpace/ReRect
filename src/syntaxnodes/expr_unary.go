@@ -12,8 +12,8 @@ type UnaryExpressionNode struct {
     Operand ExpressionNode
 }
 
-func NewUnaryExpressionNode(operand ExpressionNode, op lexer.Token) UnaryExpressionNode {
-    return UnaryExpressionNode{
+func NewUnaryExpressionNode(operand ExpressionNode, op lexer.Token) *UnaryExpressionNode {
+    return &UnaryExpressionNode{
         Operator: op,
         Operand: operand,
     }

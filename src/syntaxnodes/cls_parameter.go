@@ -9,11 +9,11 @@ type ParameterClauseNode struct {
     SyntaxNode
 
     ParameterName lexer.Token
-    ParameterType TypeClauseNode
+    ParameterType *TypeClauseNode
 }
 
-func NewParameterClauseNode(prmname lexer.Token, typ TypeClauseNode) ParameterClauseNode {
-    return ParameterClauseNode{
+func NewParameterClauseNode(prmname lexer.Token, typ *TypeClauseNode) *ParameterClauseNode {
+    return &ParameterClauseNode{
         ParameterName: prmname,
         ParameterType: typ,
     }

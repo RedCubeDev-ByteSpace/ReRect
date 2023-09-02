@@ -10,14 +10,16 @@ type FromToStatementNode struct {
 
     FromKw lexer.Token
     LowerBound ExpressionNode
+    Iterator lexer.Token
     UpperBound ExpressionNode
     Body StatementNode
 }
 
-func NewFromToStatementNode(fromkw lexer.Token, lwbound ExpressionNode, upbound ExpressionNode, body StatementNode) FromToStatementNode {
-    return FromToStatementNode{
+func NewFromToStatementNode(fromkw lexer.Token, lwbound ExpressionNode, iterator lexer.Token, upbound ExpressionNode, body StatementNode) *FromToStatementNode {
+    return &FromToStatementNode{
         FromKw: fromkw,
         LowerBound: lwbound,
+        Iterator: iterator,
         UpperBound: upbound,
         Body: body,
     }

@@ -13,8 +13,8 @@ type BinaryExpressionNode struct {
     Operator lexer.Token
 }
 
-func NewBinaryExpressionNode(left ExpressionNode, right ExpressionNode, op lexer.Token) BinaryExpressionNode {
-    return BinaryExpressionNode{
+func NewBinaryExpressionNode(left ExpressionNode, right ExpressionNode, op lexer.Token) *BinaryExpressionNode {
+    return &BinaryExpressionNode{
         Left: left,
         Right: right,
         Operator: op,

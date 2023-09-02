@@ -13,14 +13,19 @@ type FunctionNode struct {
 
     Parameters []*ParameterClauseNode 
 
+    ReturnType *TypeClauseNode
+    HasReturnType bool
+
     Body StatementNode
 }
 
-func NewFunctionNode(fnckw lexer.Token, fncname lexer.Token, prm []*ParameterClauseNode, body StatementNode) FunctionNode {
-    return FunctionNode{
+func NewFunctionNode(fnckw lexer.Token, fncname lexer.Token, prm []*ParameterClauseNode, rettype *TypeClauseNode, hasrettype bool, body StatementNode) *FunctionNode {
+    return &FunctionNode{
         FunctionKw: fnckw,
         FunctionName: fncname,
         Parameters: prm,
+        ReturnType: rettype,
+        HasReturnType: hasrettype,
         Body: body,
     }
 }
