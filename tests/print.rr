@@ -1,0 +1,6 @@
+load System include;
+
+function main() {
+	Print("Ah yes, text " + 69);
+	return;
+}
