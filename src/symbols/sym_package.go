@@ -1,5 +1,6 @@
 package symbols
 
+
 // Package variable symbol
 // -----------------------
 type PackageSymbol struct {
@@ -28,4 +29,18 @@ func (sym *PackageSymbol) Name() string {
 
 func (sym *PackageSymbol) Type() SymbolType {
     return ST_Package
+}
+
+func (sym *PackageSymbol) TryRegisterFunction(fnc *FunctionSymbol) bool {
+    // check if a function with this name already exists
+    for _, v := range sym.Functions {
+        if v.FuncName == fnc.FuncName {
+            // function name is already taken!
+
+            return false
+        }
+    }
+
+    sym.Functions = append(sym.Functions, fnc)
+    return true
 }

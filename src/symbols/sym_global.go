@@ -5,21 +5,25 @@ package symbols
 type GlobalSymbol struct {
     VariableSymbol
 
-    VarName string
-    VarType *TypeSymbol
+    GlobalName string
+    GlobalType *TypeSymbol
 }
 
 func NewGlobalSymbol(name string, typ *TypeSymbol) *GlobalSymbol {
     return &GlobalSymbol{
-        VarName: name,
-        VarType: typ,
+        GlobalName: name,
+        GlobalType: typ,
     }
 }
 
 func (sym *GlobalSymbol) Name() string {
-    return sym.VarName
+    return sym.GlobalName
 }
 
 func (sym *GlobalSymbol) Type() SymbolType {
     return ST_Global
+}
+
+func (sym *GlobalSymbol) VarType() *TypeSymbol {
+    return sym.GlobalType
 }

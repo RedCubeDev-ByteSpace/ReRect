@@ -5,7 +5,6 @@ package symbols
 type Symbol interface {
     Type() SymbolType
     Name() string
-    Equal(*Symbol) bool
 }
 
 // Types of sybols

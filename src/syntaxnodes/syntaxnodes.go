@@ -38,7 +38,7 @@ const (
     NT_Global            SyntaxNodeType = "Global variable member"
 
     // Statements
-    NT_DeclarationStmt   SyntaxNodeType = "Local variable member"
+    NT_DeclarationStmt   SyntaxNodeType = "Local variable statement"
     NT_ReturnStmt        SyntaxNodeType = "Return statement"
     NT_WhileStmt         SyntaxNodeType = "While statement"
     NT_FromToStmt        SyntaxNodeType = "From-To statement node"

@@ -5,21 +5,25 @@ package symbols
 type LocalSymbol struct {
     VariableSymbol
 
-    VarName string
-    VarType *TypeSymbol
+    LocalName string
+    LocalType *TypeSymbol
 }
 
 func NewLocalSymbol(name string, typ *TypeSymbol) *LocalSymbol {
     return &LocalSymbol{
-        VarName: name,
-        VarType: typ,
+        LocalName: name,
+        LocalType: typ,
     }
 }
 
 func (sym *LocalSymbol) Name() string {
-    return sym.VarName
+    return sym.LocalName
 }
 
 func (sym *LocalSymbol) Type() SymbolType {
     return ST_Local
+}
+
+func (sym *LocalSymbol) VarType() *TypeSymbol {
+    return sym.LocalType
 }

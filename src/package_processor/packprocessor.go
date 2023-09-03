@@ -19,20 +19,24 @@ func Init() {
     gopackages.Load()
 }
 
-func Process(mems [][]syntaxnodes.MemberNode) {
+func Process(mems [][]syntaxnodes.MemberNode) ([]*symbols.PackageSymbol, [][]syntaxnodes.MemberNode) {
     packs := []*symbols.PackageSymbol{}
+    members := make([][]syntaxnodes.MemberNode, 0)
 
     // Register all names first
     for _, mem := range mems {
         p := register(mem)
         fmt.Println(p.PackName)
         packs = append(packs, p)
+        members = append(members, mem)
     }
     
     // Link up the packages
     for i, mem := range mems {
         link(packs[i], mem)
     }
+
+    return packs, members
 }
 
 func register(mem []syntaxnodes.MemberNode) *symbols.PackageSymbol {

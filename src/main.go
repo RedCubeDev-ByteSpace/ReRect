@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-    "slices"
+	"slices"
 
+	"bytespace.network/rerect/binder"
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
 	"bytespace.network/rerect/lexer"
@@ -47,7 +48,7 @@ func main() {
     // Package processing
     // ------------------
     packageprocessor.Init()
-    packageprocessor.Process([][]syntaxnodes.MemberNode{members})
+    packs, mems := packageprocessor.Process([][]syntaxnodes.MemberNode{members})
 
     fmt.Println("\nPackage processor output:")
     for _, v := range compunit.PackagesRegister {
@@ -70,4 +71,19 @@ func main() {
         error.Output()
         return
     }
+
+    // Binding
+    // -------
+
+    // First: Index all functions
+    for i, _ := range mems {
+        binder.IndexFunctions(packs[i], mems[i])
+    }
+
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return
+    }
+
 }

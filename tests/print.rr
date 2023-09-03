@@ -12,3 +12,7 @@ function gaming(aaa bool) int {
         return 200;
     }
 }
+
+function gaming() gaming {
+    // we gaming again
+}

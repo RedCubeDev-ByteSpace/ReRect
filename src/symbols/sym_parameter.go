@@ -5,23 +5,27 @@ package symbols
 type ParameterSymbol struct {
     VariableSymbol
 
-    VarName string
-    VarIdx  int
-    VarType *TypeSymbol
+    ParameterName string
+    ParameterIdx  int
+    ParameterType *TypeSymbol
 }
 
 func NewParameterSymbol(name string, idx int, typ *TypeSymbol) *ParameterSymbol {
     return &ParameterSymbol{
-        VarName: name,
-        VarIdx: idx,
-        VarType: typ,
+        ParameterName: name,
+        ParameterIdx: idx,
+        ParameterType: typ,
     }
 }
 
 func (sym *ParameterSymbol) Name() string {
-    return sym.VarName
+    return sym.ParameterName
 }
 
 func (sym *ParameterSymbol) Type() SymbolType {
     return ST_Parameter
+}
+
+func (sym *ParameterSymbol) VarType() *TypeSymbol {
+    return sym.ParameterType
 }
