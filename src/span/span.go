@@ -14,6 +14,16 @@ type Span struct {
     File    int // File ID
     FromIdx int // Char start
     ToIdx   int // Char end
+
+    Internal bool
+}
+
+// Shortcut for getting an internal span
+// -------------------------------------
+func Internal() Span {
+    return Span{
+        Internal: true,
+    }
 }
 
 // Format span as a string

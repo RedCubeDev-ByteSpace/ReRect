@@ -46,10 +46,16 @@ func Output() {
         }
 
         fmt.Print(RED)
-        fmt.Printf("[%s][L:%d, C:%d]: %s\n", err.Unit, line, col, err.Message)
-        fmt.Print(RST)
-        fmt.Println(errline)
-        fmt.Printf("%s%s%s%s\n", RED, strings.Repeat(" ", col-1), strings.Repeat("^", underlineLen), RST)
+   
+        if !err.Position.Internal {
+            fmt.Printf("[%s][L:%d, C:%d]: %s\n", err.Unit, line, col, err.Message)
+            fmt.Print(RST)
+            fmt.Println(errline)
+            fmt.Printf("%s%s%s%s\n", RED, strings.Repeat(" ", col-1), strings.Repeat("^", underlineLen), RST)
+        } else {
+            fmt.Printf("[%s][Internal]: %s\n", err.Unit, err.Message)
+            fmt.Print(RST)
+        }
         fmt.Println()
     }
 }

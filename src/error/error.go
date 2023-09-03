@@ -33,6 +33,8 @@ const (
     FIO CompUnit = "FileIO"
     LEX CompUnit = "Lexer"
     PRS CompUnit = "Parser"
+    PCK CompUnit = "PackageProcessor"
+    GOP CompUnit = "GoNativePackages"
     BND CompUnit = "Binder"
     RNT CompUnit = "Runtime"
 )

@@ -1,4 +1,4 @@
-load System include;
+load sys include;
 
 function main() {
 	Print("Ah yes, text " + 69 + " also: " + gaming(true));
