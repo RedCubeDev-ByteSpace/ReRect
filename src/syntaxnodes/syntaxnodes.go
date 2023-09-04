@@ -44,6 +44,8 @@ const (
     NT_FromToStmt        SyntaxNodeType = "From-To statement node"
     NT_ForStmt           SyntaxNodeType = "For statement node"
     NT_LoopStmt          SyntaxNodeType = "Loop statement node"
+    NT_BreakStmt         SyntaxNodeType = "Break statement node"
+    NT_ContinueStmt      SyntaxNodeType = "Continue statement node"
     NT_BlockStmt         SyntaxNodeType = "Block statement node"
     NT_ExpressionStmt    SyntaxNodeType = "Expression statement node"
     NT_IfStmt            SyntaxNodeType = "If statement node"

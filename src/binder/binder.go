@@ -6,6 +6,7 @@
 package binder
 
 import (
+	"fmt"
 	"strconv"
 
 	"bytespace.network/rerect/boundnodes"
@@ -71,6 +72,10 @@ type Binder struct {
     CurrentPackage *symbols.PackageSymbol
     CurrentFunction *symbols.FunctionSymbol
     CurrentScope *Scope
+
+    BreakLabels []boundnodes.BoundLabel
+    ContinueLabels []boundnodes.BoundLabel
+    LabelCount int
 }
 
 func (bin *Binder) EnterNewScope() {
@@ -83,6 +88,16 @@ func (bin *Binder) EnterNewScope() {
 
 func (bin *Binder) LeaveScope() {
     bin.CurrentScope = bin.CurrentScope.Parent
+}
+
+func (bin *Binder) PushLabels(brk boundnodes.BoundLabel, cnt boundnodes.BoundLabel) {
+    bin.BreakLabels    = append(bin.BreakLabels, brk)
+    bin.ContinueLabels = append(bin.ContinueLabels, cnt)
+}
+
+func (bin *Binder) PopLabels() {
+	bin.BreakLabels    = bin.BreakLabels[:len(bin.BreakLabels)-1]
+	bin.ContinueLabels = bin.ContinueLabels[:len(bin.ContinueLabels)-1]
 }
 
 func BindFunctions(pck *symbols.PackageSymbol, syms []*symbols.FunctionSymbol, bodies []syntaxnodes.StatementNode) []boundnodes.BoundStatementNode {
@@ -128,6 +143,12 @@ func (bin *Binder) bindStatement(stmt syntaxnodes.StatementNode) boundnodes.Boun
 
     } else if stmt.Type() == syntaxnodes.NT_LoopStmt {
         return bin.bindLoopStmt(stmt.(*syntaxnodes.LoopStatementNode))
+
+    } else if stmt.Type() == syntaxnodes.NT_BreakStmt {
+        return bin.bindBreakStmt(stmt.(*syntaxnodes.BreakStatementNode))
+
+    } else if stmt.Type() == syntaxnodes.NT_ContinueStmt {
+        return bin.bindContinueStmt(stmt.(*syntaxnodes.ContinueStatementNode))
 
     } else if stmt.Type() == syntaxnodes.NT_BlockStmt {
         return bin.bindBlockStmt(stmt.(*syntaxnodes.BlockStatementNode))
@@ -209,6 +230,25 @@ func (bin *Binder) bindReturnStmt(stmt *syntaxnodes.ReturnStatementNode) boundno
     return boundnodes.NewBoundReturnStatementNode(stmt, retValue, stmt.HasExpression)
 }
 
+func (bin *Binder) bindLoopBody(stmt syntaxnodes.StatementNode) (boundnodes.BoundStatementNode, boundnodes.BoundLabel, boundnodes.BoundLabel) {
+   
+    // generate loop labels
+    bin.LabelCount++
+    brk := boundnodes.BoundLabel(fmt.Sprintf("break%d", bin.LabelCount))
+    cnt := boundnodes.BoundLabel(fmt.Sprintf("continue%d", bin.LabelCount))
+
+    // push loop labels
+    bin.PushLabels(brk, cnt)
+
+    // bind the body
+    body := bin.bindStatement(stmt)
+
+    // pop the labels
+    bin.PopLabels()
+
+    return body, brk, cnt
+}
+
 func (bin *Binder) bindWhileStmt(stmt *syntaxnodes.WhileStatementNode) boundnodes.BoundStatementNode {
     // bind the while condition
     cond := bin.bindExpression(stmt.Expression)
@@ -218,11 +258,11 @@ func (bin *Binder) bindWhileStmt(stmt *syntaxnodes.WhileStatementNode) boundnode
 
     // bind the loop body
     bin.EnterNewScope()
-    body := bin.bindStatement(stmt.Body)
+    body, brk, cnt := bin.bindLoopBody(stmt.Body)
     bin.LeaveScope()
 
     // create new node
-    return boundnodes.NewBoundWhileStatementNode(stmt, cond, body)
+    return boundnodes.NewBoundWhileStatementNode(stmt, cond, body, brk, cnt)
 }
 
 func (bin *Binder) bindFromToStmt(stmt *syntaxnodes.FromToStatementNode) boundnodes.BoundStatementNode {
@@ -239,12 +279,12 @@ func (bin *Binder) bindFromToStmt(stmt *syntaxnodes.FromToStatementNode) boundno
     ub := bin.bindExpression(stmt.UpperBound)
 
     // bind the loop body
-    body := bin.bindStatement(stmt.Body)
+    body, brk, cnt := bin.bindLoopBody(stmt.Body)
 
     bin.LeaveScope()
 
     // create new node
-    return boundnodes.NewBoundFromToStatementNode(stmt, vari, lb, ub, body)
+    return boundnodes.NewBoundFromToStatementNode(stmt, vari, lb, ub, body, brk, cnt)
 }
 
 func (bin *Binder) bindForStmt(stmt *syntaxnodes.ForStatementNode) boundnodes.BoundStatementNode {
@@ -262,13 +302,13 @@ func (bin *Binder) bindForStmt(stmt *syntaxnodes.ForStatementNode) boundnodes.Bo
     action := bin.bindStatement(stmt.Action)
 
     // bind the body
-    body := bin.bindStatement(stmt.Body)
+    body, brk, cnt := bin.bindLoopBody(stmt.Body)
 
     // leave our new scope
     bin.LeaveScope()
 
     // create new node
-    return boundnodes.NewBoundForStatementNode(stmt, init, cond, action, body)
+    return boundnodes.NewBoundForStatementNode(stmt, init, cond, action, body, brk, cnt)
 }
 
 func (bin *Binder) bindLoopStmt(stmt *syntaxnodes.LoopStatementNode) boundnodes.BoundStatementNode {
@@ -279,13 +319,35 @@ func (bin *Binder) bindLoopStmt(stmt *syntaxnodes.LoopStatementNode) boundnodes.
     amount := bin.bindExpression(stmt.Expression)
 
     // bind the loop body
-    body := bin.bindStatement(stmt.Body)
+    body, brk, cnt := bin.bindLoopBody(stmt.Body)
 
     // leave our new scope
     bin.LeaveScope()
 
     // create a new node
-    return boundnodes.NewBoundLoopStatementNode(stmt, amount, body)
+    return boundnodes.NewBoundLoopStatementNode(stmt, amount, body, brk, cnt)
+}
+
+func (bin *Binder) bindBreakStmt(stmt *syntaxnodes.BreakStatementNode) boundnodes.BoundStatementNode {
+    // are there actually any loops around rn?
+    if len(bin.BreakLabels) == 0 {
+        error.Report(error.NewError(error.BND, stmt.Position(), "Unable to use break statement outside of a loop!"))
+        return boundnodes.NewBoundExpressionStatementNode(stmt, boundnodes.NewBoundErrorExpressionNode(stmt))
+    }
+
+    // if there are -> create a goto to the closest break label
+    return boundnodes.NewBoundGotoStatementNode(stmt, bin.BreakLabels[len(bin.BreakLabels)-1])
+}
+
+func (bin *Binder) bindContinueStmt(stmt *syntaxnodes.ContinueStatementNode) boundnodes.BoundStatementNode {
+    // are there actually any loops around rn?
+    if len(bin.ContinueLabels) == 0 {
+        error.Report(error.NewError(error.BND, stmt.Position(), "Unable to use continue statement outside of a loop!"))
+        return boundnodes.NewBoundExpressionStatementNode(stmt, boundnodes.NewBoundErrorExpressionNode(stmt))
+    }
+
+    // if there are -> create a goto to the closest break label
+    return boundnodes.NewBoundGotoStatementNode(stmt, bin.ContinueLabels[len(bin.ContinueLabels)-1])
 }
 
 func (bin *Binder) bindBlockStmt(stmt *syntaxnodes.BlockStatementNode) boundnodes.BoundStatementNode {

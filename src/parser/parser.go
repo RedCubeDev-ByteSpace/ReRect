@@ -303,6 +303,14 @@ func (prs *Parser) parseStatement() syntaxnodes.StatementNode {
     // Loop(<amount>) { ... }
     } else if prs.current().Type == lexer.TT_KW_Loop {
         stmt = prs.parseLoopStatement()
+
+    // Break;
+    } else if prs.current().Type == lexer.TT_KW_Break {
+        stmt = prs.parseBreakStatement()
+
+    // Continue;
+    } else if prs.current().Type == lexer.TT_KW_Continue {
+        stmt = prs.parseContinueStatement()
     
     // if (<cond>) { ... } [else { ... }]
     } else if prs.current().Type == lexer.TT_KW_If {
@@ -320,6 +328,8 @@ func (prs *Parser) parseStatement() syntaxnodes.StatementNode {
     // if this isnt a block statement
     if stmt.Type() == syntaxnodes.NT_ReturnStmt      ||
        stmt.Type() == syntaxnodes.NT_DeclarationStmt || 
+       stmt.Type() == syntaxnodes.NT_BreakStmt || 
+       stmt.Type() == syntaxnodes.NT_ContinueStmt || 
        stmt.Type() == syntaxnodes.NT_ExpressionStmt  {
         // require a semicolon
         prs.consume(lexer.TT_Semicolon)
@@ -460,6 +470,20 @@ func (prs *Parser) parseLoopStatement() *syntaxnodes.LoopStatementNode {
     body := prs.parseStatement()
 
     return syntaxnodes.NewLoopStatementNode(kw, amount, body)
+}
+
+func (prs *Parser) parseBreakStatement() *syntaxnodes.BreakStatementNode {
+    // consume 'break' keyword
+    kw := prs.consume(lexer.TT_KW_Break)
+
+    return syntaxnodes.NewBreakStatementNode(kw)
+}
+
+func (prs *Parser) parseContinueStatement() *syntaxnodes.ContinueStatementNode {
+    // consume 'continue' keyword
+    kw := prs.consume(lexer.TT_KW_Continue)
+
+    return syntaxnodes.NewContinueStatementNode(kw)
 }
 
 func (prs *Parser) parseIfStatement() *syntaxnodes.IfStatementNode {

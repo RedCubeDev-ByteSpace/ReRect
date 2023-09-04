@@ -11,10 +11,10 @@ type BoundLabelStatementNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Label string
+    Label BoundLabel
 }
 
-func NewBoundLabelStatementNode(src syntaxnodes.SyntaxNode, label string) *BoundLabelStatementNode {
+func NewBoundLabelStatementNode(src syntaxnodes.SyntaxNode, label BoundLabel) *BoundLabelStatementNode {
     return &BoundLabelStatementNode {
         SourceNode: src,
         Label: label,

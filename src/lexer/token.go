@@ -79,6 +79,8 @@ const (
     TT_KW_To                   TokenType = "TT_KW_To"
     TT_KW_For                  TokenType = "TT_KW_For"
     TT_KW_Loop                 TokenType = "TT_KW_Loop"
+    TT_KW_Break                TokenType = "TT_KW_Break"
+    TT_KW_Continue             TokenType = "TT_KW_Continue"
     TT_KW_If                   TokenType = "TT_KW_If"
     TT_KW_Else                 TokenType = "TT_KW_Else"
     TT_KW_True                 TokenType = "TT_KW_True"
@@ -100,6 +102,8 @@ var Keywords = map[string]TokenType {
     "to":       TT_KW_To,
     "for":      TT_KW_For,
     "loop":     TT_KW_Loop,
+    "break":    TT_KW_Break,
+    "continue": TT_KW_Continue,
     "true":     TT_KW_True,
     "false":    TT_KW_False,
     "if":       TT_KW_If,

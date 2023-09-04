@@ -36,5 +36,6 @@ const (
     PCK CompUnit = "PackageProcessor"
     GOP CompUnit = "GoNativePackages"
     BND CompUnit = "Binder"
+    LWR CompUnit = "Lowerer"
     RNT CompUnit = "Runtime"
 )

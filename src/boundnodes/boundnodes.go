@@ -18,6 +18,16 @@ type BoundStatementNode interface {
     BoundNode
 }
 
+// Bound loop statement node
+// -------------------------
+type BoundLoopingStatementNode interface {
+    BoundStatementNode
+    BreakLabel()    BoundLabel
+    ContinueLabel() BoundLabel
+}
+
+type BoundLabel string
+
 // Bound expression nodes
 // ----------------------
 type BoundExpressionNode interface {
@@ -45,6 +55,7 @@ const (
     BT_GoToIStmt       BoundNodeType = "Internal goto statement"
     BT_GoToIfIStmt     BoundNodeType = "Internal conditional goto statement"
     BT_DeleteIStmt     BoundNodeType = "Internal variable deletion statement"
+    BT_ApproachIStmt   BoundNodeType = "Internal increment / decrement statement"
 
     // Expressions
     BT_LiteralExpr     BoundNodeType = "Literal expression"

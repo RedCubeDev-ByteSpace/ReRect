@@ -7,19 +7,24 @@ import (
 // Loop statement
 // --------------
 type BoundLoopStatementNode struct {
-    BoundStatementNode
+    BoundLoopingStatementNode
 
     SourceNode syntaxnodes.SyntaxNode
 
     Amount BoundExpressionNode
     Body BoundStatementNode
+
+    BreakLbl BoundLabel
+    ContinueLbl BoundLabel
 }
 
-func NewBoundLoopStatementNode(src syntaxnodes.SyntaxNode, amount BoundExpressionNode, body BoundStatementNode) *BoundLoopStatementNode {
+func NewBoundLoopStatementNode(src syntaxnodes.SyntaxNode, amount BoundExpressionNode, body BoundStatementNode, brk BoundLabel, cnt BoundLabel) *BoundLoopStatementNode {
     return &BoundLoopStatementNode {
         SourceNode: src,
         Amount: amount,
         Body: body,
+        BreakLbl: brk,
+        ContinueLbl: cnt,
     }
 }
 
@@ -29,4 +34,12 @@ func (nd *BoundLoopStatementNode) Type() BoundNodeType {
 
 func (nd *BoundLoopStatementNode) Source() syntaxnodes.SyntaxNode {
     return nd.SourceNode
+}
+
+func (nd *BoundLoopStatementNode) BreakLabel() BoundLabel {
+    return nd.BreakLbl
+}
+
+func (nd *BoundLoopStatementNode) ContinueLabel() BoundLabel {
+    return nd.ContinueLbl
 }

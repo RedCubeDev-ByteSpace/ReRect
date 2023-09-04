@@ -11,11 +11,11 @@ type BoundGotoIfStatementNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Label string
+    Label BoundLabel
     Condition BoundExpressionNode
 }
 
-func NewBoundGotoIfStatementNode(src syntaxnodes.SyntaxNode, label string, cond BoundExpressionNode) *BoundGotoIfStatementNode {
+func NewBoundGotoIfStatementNode(src syntaxnodes.SyntaxNode, label BoundLabel, cond BoundExpressionNode) *BoundGotoIfStatementNode {
     return &BoundGotoIfStatementNode {
         SourceNode: src,
         Label: label,

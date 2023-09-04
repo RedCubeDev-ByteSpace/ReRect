@@ -9,6 +9,7 @@ import (
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
 	"bytespace.network/rerect/lexer"
+	"bytespace.network/rerect/lowerer"
 	packageprocessor "bytespace.network/rerect/package_processor"
 	"bytespace.network/rerect/parser"
 	"bytespace.network/rerect/symbols"
@@ -102,9 +103,9 @@ func main() {
     }
 
     // Second: bind all function bodies
-    for _, v := range pus {
+    for i, v := range pus {
         bodies := binder.BindFunctions(v.Package, v.FunctionSymbols, v.SourceFunctionBodies)
-        v.FunctionBodies = bodies
+        pus[i].FunctionBodies = bodies
     }
 
     // if there are errors -> output them and stop execution
@@ -112,4 +113,22 @@ func main() {
         error.Output()
         return
     }
+
+    // Lowering
+    // --------
+    fmt.Println("\nLowerer output:")
+
+    for _, p := range pus {
+        fmt.Printf("Package unit %s\n", p.Package.Name())
+
+        for i, _ := range p.FunctionSymbols {
+            fmt.Printf("function %s:\n",p.FunctionSymbols[i].FuncName)
+            p.FunctionBodies[i] = lowerer.Lower(p.FunctionBodies[i])
+            
+            for _, v := range p.FunctionBodies[i].(*boundnodes.BoundBlockStatementNode).Statements {
+                fmt.Printf("  %s\n", v.Type())
+            }
+        }
+    }
+
 }

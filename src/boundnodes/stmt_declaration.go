@@ -12,12 +12,12 @@ type BoundDeclarationStatementNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Variable *symbols.LocalSymbol
+    Variable symbols.VariableSymbol
     Initializer BoundExpressionNode 
     HasInitializer bool
 }
 
-func NewBoundDeclarationStatementNode(src syntaxnodes.SyntaxNode, vari *symbols.LocalSymbol, init BoundExpressionNode, hasinit bool) *BoundDeclarationStatementNode {
+func NewBoundDeclarationStatementNode(src syntaxnodes.SyntaxNode, vari symbols.VariableSymbol, init BoundExpressionNode, hasinit bool) *BoundDeclarationStatementNode {
     return &BoundDeclarationStatementNode {
         SourceNode: src,
         Variable: vari,
