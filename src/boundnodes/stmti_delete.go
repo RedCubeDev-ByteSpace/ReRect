@@ -6,7 +6,7 @@ import (
 )
 
 // Delete statement
-// --------------
+// ----------------
 type BoundDeleteStatementNode struct {
     BoundStatementNode
 
