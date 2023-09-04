@@ -1,7 +1,7 @@
 load sys include;
 
 function main() {
-	Print("Ah yes, text " + 69 + " also: " + gaming(true));
+	Print("Ah yes, text " + string(69) + " also: " + string(gaming(true)));
 	return;
 }
 
@@ -13,6 +13,6 @@ function gaming(aaa bool) int {
     }
 }
 
-function gaming() gaming {
+//function gaming() gaming {
     // we gaming again
-}
+//}

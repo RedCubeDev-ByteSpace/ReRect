@@ -5,11 +5,13 @@ import (
 	"slices"
 
 	"bytespace.network/rerect/binder"
+	"bytespace.network/rerect/boundnodes"
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
 	"bytespace.network/rerect/lexer"
 	packageprocessor "bytespace.network/rerect/package_processor"
 	"bytespace.network/rerect/parser"
+	"bytespace.network/rerect/symbols"
 	"bytespace.network/rerect/syntaxnodes"
 )
 
@@ -74,10 +76,23 @@ func main() {
 
     // Binding
     // -------
+    type PackageUnit struct {
+        Package *symbols.PackageSymbol
+        FunctionSymbols []*symbols.FunctionSymbol
+        SourceFunctionBodies []syntaxnodes.StatementNode
+        FunctionBodies []boundnodes.BoundStatementNode
+    }
+    
+    pus := []PackageUnit{}
 
     // First: Index all functions
     for i, _ := range mems {
-        binder.IndexFunctions(packs[i], mems[i])
+        syms, srcbodies := binder.IndexFunctions(packs[i], mems[i])
+        pus = append(pus, PackageUnit{
+            Package: packs[i],
+            FunctionSymbols: syms,
+            SourceFunctionBodies: srcbodies,
+        })
     }
 
     // if there are errors -> output them and stop execution
@@ -86,4 +101,15 @@ func main() {
         return
     }
 
+    // Second: bind all function bodies
+    for _, v := range pus {
+        bodies := binder.BindFunctions(v.Package, v.FunctionSymbols, v.SourceFunctionBodies)
+        v.FunctionBodies = bodies
+    }
+
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return
+    }
 }

@@ -55,7 +55,7 @@ const (
     NT_BinaryExpr        SyntaxNodeType = "Binary expression node"
     NT_CallExpr          SyntaxNodeType = "Call expression node"
     NT_NameExpr          SyntaxNodeType = "Name expression node"
-    NT_ParenthesizedExpr SyntaxNodeType = "Name expression node"
+    NT_ParenthesizedExpr SyntaxNodeType = "Parenthesized expression node"
 
     NT_ErrorExpr         SyntaxNodeType = "Error expression node"
 

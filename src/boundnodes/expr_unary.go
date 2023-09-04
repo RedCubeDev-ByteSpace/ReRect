@@ -12,11 +12,11 @@ type BoundUnaryExpressionNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Operator BoundUnaryOperator
+    Operator *BoundUnaryOperator
     Operand BoundExpressionNode
 }
 
-func NewBoundUnaryExpressionNode(src syntaxnodes.SyntaxNode, op BoundUnaryOperator, operand BoundExpressionNode) *BoundUnaryExpressionNode {
+func NewBoundUnaryExpressionNode(src syntaxnodes.SyntaxNode, op *BoundUnaryOperator, operand BoundExpressionNode) *BoundUnaryExpressionNode {
     return &BoundUnaryExpressionNode {
         SourceNode: src,
         Operator: op,

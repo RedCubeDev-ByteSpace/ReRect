@@ -55,7 +55,7 @@ const (
     TT_Bang                    TokenType = "TT_Bang"
     TT_Equal                   TokenType = "TT_Equal"
     TT_Unequal                 TokenType = "TT_Unequal"
-    TT_LessThan                TokenType = "TT_LessEqual"
+    TT_LessThan                TokenType = "TT_LessThan"
     TT_GreaterThan             TokenType = "TT_GreaterThan"
     TT_LessEqual               TokenType = "TT_LessEqual"
     TT_GreaterEqual            TokenType = "TT_GreaterEqual"

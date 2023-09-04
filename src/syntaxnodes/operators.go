@@ -8,10 +8,18 @@ func GetBinaryOperatorPrecedence(tok lexer.TokenType) int {
     switch tok {
         case lexer.TT_Star,
              lexer.TT_Slash:
-            return 4
+            return 5
 
         case lexer.TT_Plus,
              lexer.TT_Minus:
+            return 4
+
+        case lexer.TT_Equal,
+             lexer.TT_Unequal,
+             lexer.TT_LessThan,
+             lexer.TT_LessEqual,
+             lexer.TT_GreaterThan,
+             lexer.TT_GreaterEqual:
             return 3
 
         case lexer.TT_Ampersands:
@@ -32,7 +40,7 @@ func GetUnaryOperatorPrecedence(tok lexer.TokenType) int {
         case lexer.TT_Plus,
              lexer.TT_Minus,
              lexer.TT_Bang:
-            return 5 // must always be higher than the highest binary op precedence
+            return 6 // must always be higher than the highest binary op precedence
 
         default:
             return 0

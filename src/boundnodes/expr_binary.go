@@ -12,12 +12,12 @@ type BoundBinaryExpressionNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Operator BoundBinaryOperator
+    Operator *BoundBinaryOperator
     Left BoundExpressionNode
     Right BoundExpressionNode
 }
 
-func NewBoundBinaryExpressionNode(src syntaxnodes.SyntaxNode, op BoundBinaryOperator, left BoundExpressionNode, right BoundExpressionNode) *BoundBinaryExpressionNode {
+func NewBoundBinaryExpressionNode(src syntaxnodes.SyntaxNode, op *BoundBinaryOperator, left BoundExpressionNode, right BoundExpressionNode) *BoundBinaryExpressionNode {
     return &BoundBinaryExpressionNode {
         SourceNode: src,
         Operator: op,

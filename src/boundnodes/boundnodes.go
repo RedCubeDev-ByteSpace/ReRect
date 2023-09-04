@@ -44,6 +44,7 @@ const (
     BT_LabelIStmt      BoundNodeType = "Internal label statement"
     BT_GoToIStmt       BoundNodeType = "Internal goto statement"
     BT_GoToIfIStmt     BoundNodeType = "Internal conditional goto statement"
+    BT_DeleteIStmt     BoundNodeType = "Internal variable deletion statement"
 
     // Expressions
     BT_LiteralExpr     BoundNodeType = "Literal expression"

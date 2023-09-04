@@ -18,9 +18,10 @@ type BoundFromToStatementNode struct {
     Body BoundStatementNode
 }
 
-func NewBoundFromToStatementNode(src syntaxnodes.SyntaxNode, lb BoundExpressionNode, up BoundExpressionNode, body BoundStatementNode) *BoundFromToStatementNode {
+func NewBoundFromToStatementNode(src syntaxnodes.SyntaxNode, iterator symbols.VariableSymbol, lb BoundExpressionNode, up BoundExpressionNode, body BoundStatementNode) *BoundFromToStatementNode {
     return &BoundFromToStatementNode {
         SourceNode: src,
+        Iterator: iterator,
         LowerBound: lb,
         UpperBound: up,
         Body: body,
