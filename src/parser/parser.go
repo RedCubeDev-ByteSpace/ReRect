@@ -57,7 +57,7 @@ func (prs *Parser) consume(typ lexer.TokenType) lexer.Token {
         // report this error
         error.Report(error.NewError(error.PRS, prs.current().Position, "Expected token '%s', instead got: '%s'!", typ, prs.current().Type))
        
-        prs.step(1)
+        //prs.step(1)
 
         // fabricate a token of this kind to keep the compilation going
         return lexer.Token {

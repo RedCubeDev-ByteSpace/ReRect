@@ -8,6 +8,9 @@ function main() {
 function gaming(aaa bool) int {
     ok();
 
+    var input <- InputChar();
+    Print(string(input));
+
     if (aaa) {
         return (100 + 200);
     } else {
@@ -17,6 +20,8 @@ function gaming(aaa bool) int {
 
 function ok() {
     loop (10) {
-        Print("ok");
+        Write("ok");
     }
+
+    Print("");
 }

@@ -592,10 +592,7 @@ func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boun
 
     // make sure the datatypes match up
     for i := range fnc.Parameters {
-        if !fnc.Parameters[i].VarType().Equal(args[i].ExprType()) {
-            error.Report(error.NewError(error.BND, expr.Parameters[i].Position(), "Function '%s' expects an argument of type '%s' at index %d, got: '%s'!", fnc.FuncName, fnc.Parameters[i].VarType().Name(), i, args[i].ExprType().Name()))
-            return boundnodes.NewBoundErrorExpressionNode(expr)
-        }
+        args[i] = bin.bindConversion(args[i], fnc.Parameters[i].VarType(), false)
     }
 
     // ok cool
@@ -628,6 +625,12 @@ func (bin *Binder) bindConversion(expr boundnodes.BoundExpressionNode, typ *symb
         error.Report(error.NewError(error.BND, expr.Source().Position(), "Unable to convert type '%s' into '%s'!", expr.ExprType().Name(), typ.Name()))
         return boundnodes.NewBoundErrorExpressionNode(expr.Source())
     }
+    
+    // identity conversion -> just return original value
+    if con == boundnodes.CT_Identity {
+        return expr
+    }
+
 
     // explicit conversion exists, but explicit isnt allowed
     if con == boundnodes.CT_Explicit && !explicit {

@@ -1,0 +1,9 @@
+package main;
+load sys include;
+
+function main() {
+    while (true) {
+        Print(string(Now()));
+        Sleep(100);
+    }
+}

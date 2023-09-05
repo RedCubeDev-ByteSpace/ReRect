@@ -9,7 +9,7 @@ func main() {
 
     // Compile
     // -------
-    prg := compctl.Compile("./tests/print.rr")
+    prg := compctl.Compile("./tests/time.rr")
 
     // Evaluate 
     // --------
