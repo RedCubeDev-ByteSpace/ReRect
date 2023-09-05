@@ -5,12 +5,15 @@ package symbols
 type GlobalSymbol struct {
     VariableSymbol
 
+    ParentPackage *PackageSymbol
+
     GlobalName string
     GlobalType *TypeSymbol
 }
 
-func NewGlobalSymbol(name string, typ *TypeSymbol) *GlobalSymbol {
+func NewGlobalSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *GlobalSymbol {
     return &GlobalSymbol{
+        ParentPackage: pck,
         GlobalName: name,
         GlobalType: typ,
     }

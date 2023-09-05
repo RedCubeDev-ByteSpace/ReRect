@@ -19,6 +19,7 @@ import (
 type CompilationResult struct {
     Ok bool
     Functions map[*symbols.FunctionSymbol]*boundnodes.BoundBlockStatementNode
+    Globals []*symbols.GlobalSymbol
 }
 
 func compFailed() *CompilationResult {
@@ -29,16 +30,22 @@ func compFailed() *CompilationResult {
 
 const DBG = false
 
-func Compile(file string) *CompilationResult {
+func Compile(srcFiles []string) *CompilationResult {
     // Lexing
     // ------
-    tokens := lexer.LexFile(file)
-  
-    if DBG {
-        fmt.Println("\nLexer output:")
-        for _, v := range tokens {
-            fmt.Printf("%s, %s, '%s'\n", v.Type, v.Position.Format(), v.Buffer)
+    fileTokens := [][]lexer.Token{}
+
+    for _, file := range srcFiles {
+        tokens := lexer.LexFile(file)
+
+        if DBG {
+            fmt.Println("\nLexer output:")
+            for _, v := range tokens {
+                fmt.Printf("%s, %s, '%s'\n", v.Type, v.Position.Format(), v.Buffer)
+            }
         }
+
+        fileTokens = append(fileTokens, tokens)
     }
 
     // if there are errors -> output them and stop execution
@@ -49,13 +56,19 @@ func Compile(file string) *CompilationResult {
 
     // Parsing
     // -------
-    members := parser.Parse(tokens)
+    fileMembers := [][]syntaxnodes.MemberNode{}
 
-    if DBG {
-        fmt.Println("\nParser output:")
-        for _, v := range members {
-            fmt.Printf("%s\n", v.Type())
+    for _, tokens := range fileTokens {
+        members := parser.Parse(tokens)
+
+        if DBG {
+            fmt.Println("\nParser output:")
+            for _, v := range members {
+                fmt.Printf("%s\n", v.Type())
+            }
         }
+
+        fileMembers = append(fileMembers, members)
     }
 
     // if there are errors -> output them and stop execution
@@ -67,7 +80,7 @@ func Compile(file string) *CompilationResult {
     // Package processing
     // ------------------
     packageprocessor.Init()
-    files := packageprocessor.Process([][]syntaxnodes.MemberNode{members})
+    files := packageprocessor.Process(fileMembers)
 
     if DBG {
         fmt.Println("\nPackage processor output:")
@@ -96,9 +109,10 @@ func Compile(file string) *CompilationResult {
     // Binding
     // -------
 
-    // First: Index all functions
+    // First: Index all functions and globals
     for _, file := range files {
         binder.IndexFunctions(file)
+        binder.IndexGlobals(file)
     }
 
     // if there are errors -> output them and stop execution
@@ -129,11 +143,16 @@ func Compile(file string) *CompilationResult {
     res := &CompilationResult{
         Ok: true,
         Functions: make(map[*symbols.FunctionSymbol]*boundnodes.BoundBlockStatementNode),
+        Globals: make([]*symbols.GlobalSymbol, 0),
     }
 
     for _, file := range files {
         for k, v := range file.FunctionBodies {
             res.Functions[k] = v.(*boundnodes.BoundBlockStatementNode)
+        }
+
+        for _, v := range file.Globals {
+            res.Globals = append(res.Globals, v)
         }
     }
 

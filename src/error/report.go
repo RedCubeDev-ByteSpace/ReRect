@@ -35,19 +35,22 @@ func Report(err Error) {
 // --------------------------
 func Output() {
     for _, err := range errors {
-        line, col := err.Position.GetLineAndCol()
-        errline := strings.Split(compunit.SourceFileRegister[err.Position.File].Content, "\n")[line - 1]
-
-        errline = strings.Replace(errline, "\t", " ", -1)
-
-        underlineLen := err.Position.ToIdx - err.Position.FromIdx
-        if underlineLen == 0 {
-            underlineLen = 1
-        }
-
         fmt.Print(RED)
    
         if !err.Position.Internal {
+            // figure out where the error happened
+            line, col := err.Position.GetLineAndCol()
+
+            // get the text from that line
+            errline := strings.Split(compunit.SourceFileRegister[err.Position.File].Content, "\n")[line - 1]
+            errline = strings.Replace(errline, "\t", " ", -1)
+
+            // calculate length of error underline
+            underlineLen := err.Position.ToIdx - err.Position.FromIdx
+            if underlineLen == 0 {
+                underlineLen = 1
+            }
+
             fmt.Printf("[%s][L:%d, C:%d]: %s\n", err.Unit, line, col, err.Message)
             fmt.Print(RST)
             fmt.Println(errline)

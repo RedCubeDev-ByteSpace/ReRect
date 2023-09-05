@@ -601,7 +601,8 @@ func (prs *Parser) parsePrimaryExpression() syntaxnodes.ExpressionNode {
             return prs.parseAssignmentExpression()
         
         // Call expression
-        } else if prs.peek(1).Type == lexer.TT_OpenParenthesis {
+        } else if prs.peek(1).Type == lexer.TT_OpenParenthesis ||
+                  prs.peek(1).Type == lexer.TT_Package {
             return prs.parseCallExpression()
 
         // Name expression
@@ -643,6 +644,17 @@ func (prs *Parser) parseAssignmentExpression() *syntaxnodes.AssignmentExpression
 }
 
 func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
+    var pack lexer.Token
+    hasPackage := false
+
+    if prs.peek(1).Type == lexer.TT_Package {
+        pack = prs.consume(lexer.TT_Identifier)
+        prs.consume(lexer.TT_Package)
+
+        hasPackage = true
+    }
+
+
     // consume call expression
     id := prs.consume(lexer.TT_Identifier)
 
@@ -666,7 +678,7 @@ func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
     cprm := prs.consume(lexer.TT_CloseParenthesis)
 
     // create new node
-    return syntaxnodes.NewCallExpressionNode(id, args, cprm)
+    return syntaxnodes.NewCallExpressionNode(id, pack, hasPackage, args, cprm)
 }
 
 func (prs *Parser) parseNameExpression() *syntaxnodes.NameExpressionNode {

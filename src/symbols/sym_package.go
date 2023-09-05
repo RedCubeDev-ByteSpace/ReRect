@@ -8,6 +8,7 @@ type PackageSymbol struct {
 
     PackName string
     Functions []*FunctionSymbol
+    Globals []*GlobalSymbol
 
     LoadedPackages map[string]*PackageSymbol
     IncludedPackages []string
@@ -42,5 +43,19 @@ func (sym *PackageSymbol) TryRegisterFunction(fnc *FunctionSymbol) bool {
     }
 
     sym.Functions = append(sym.Functions, fnc)
+    return true
+}
+
+func (sym *PackageSymbol) TryRegisterGlobal(glb *GlobalSymbol) bool {
+    // check if a global with this name already exists
+    for _, v := range sym.Globals {
+        if v.GlobalName == glb.GlobalName {
+            // Global name is already taken!
+
+            return false
+        }
+    }
+
+    sym.Globals = append(sym.Globals, glb)
     return true
 }

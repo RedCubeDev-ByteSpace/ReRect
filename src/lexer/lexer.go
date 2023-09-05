@@ -76,7 +76,7 @@ func LexFile(file string) []Token {
     // Report IO Errors
     if err != nil {
          error.Report(
-            error.NewError(error.FIO, span.Span{}, err.Error()),
+            error.NewError(error.FIO, span.Internal(), err.Error()),
          )
 
          return make([]Token, 0)

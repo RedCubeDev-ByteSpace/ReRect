@@ -37,15 +37,15 @@ var GlobalDataTypeRegister map[string]*symbols.TypeSymbol = map[string]*symbols.
     
     "void": symbols.NewTypeSymbol("void", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // nothin
     
-    "long": symbols.NewTypeSymbol("long", make([]*symbols.TypeSymbol, 0), symbols.INT, 64, 0), // 64 bit int
-    "int" : symbols.NewTypeSymbol("int" , make([]*symbols.TypeSymbol, 0), symbols.INT, 32, 0), // 32 bit int
-    "word": symbols.NewTypeSymbol("word", make([]*symbols.TypeSymbol, 0), symbols.INT, 16, 0), // 16 bit int
-    "byte": symbols.NewTypeSymbol("byte", make([]*symbols.TypeSymbol, 0), symbols.INT,  8, 0), // 8  bit int
+    "long": symbols.NewTypeSymbol("long", make([]*symbols.TypeSymbol, 0), symbols.INT, 64, int64(0)), // 64 bit int
+    "int" : symbols.NewTypeSymbol("int" , make([]*symbols.TypeSymbol, 0), symbols.INT, 32, int32(0)), // 32 bit int
+    "word": symbols.NewTypeSymbol("word", make([]*symbols.TypeSymbol, 0), symbols.INT, 16, int16(0)), // 16 bit int
+    "byte": symbols.NewTypeSymbol("byte", make([]*symbols.TypeSymbol, 0), symbols.INT,  8,  int8(0)), // 8  bit int
 
     "bool": symbols.NewTypeSymbol("bool", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, false), // boolean value
 
-    "float" : symbols.NewTypeSymbol("float" , make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 32, 0.0), // 32 bit float
-    "double": symbols.NewTypeSymbol("double", make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 64, 0.0), // 64 bit float
+    "float" : symbols.NewTypeSymbol("float" , make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 32, float64(0)), // 32 bit float
+    "double": symbols.NewTypeSymbol("double", make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 64, float32(0)), // 64 bit float
     
     "string": symbols.NewTypeSymbol("string", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, ""), // string
 }

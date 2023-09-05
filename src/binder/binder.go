@@ -63,6 +63,32 @@ func IndexFunctions(file *packageprocessor.CompilationFile) {
 }
 
 // --------------------------------------------------------
+// Global indexing
+// --------------------------------------------------------
+func IndexGlobals(file *packageprocessor.CompilationFile) {
+    // look through all member nodes
+    for _, v := range file.Members {
+        // we're only looking for function nodes
+        if v.Type() != syntaxnodes.NT_Global {
+            continue
+        }
+
+        glbMem := v.(*syntaxnodes.GlobalNode)
+
+        // register a global symbol for this function
+        glb := symbols.NewGlobalSymbol(file.Package, glbMem.GlobalName.Buffer, LookupTypeClause(glbMem.VarType))
+        ok := file.Package.TryRegisterGlobal(glb) 
+
+        if !ok {
+            error.Report(error.NewError(error.BND, glbMem.GlobalName.Position, "Cannot register global '%s'! A global with that name already exists!", glb.Name()))
+            continue
+        }
+
+        file.Globals = append(file.Globals, glb)
+    }
+}
+
+// --------------------------------------------------------
 // Binding
 // --------------------------------------------------------
 type Binder struct {
@@ -106,10 +132,19 @@ func BindFunctions(file *packageprocessor.CompilationFile) {
             CurrentScope: NewScope(nil),
         }
 
+        // register the package globals as variables
+        for _, v := range file.Globals {
+            bin.CurrentScope.RegisterVariable(v)
+        }
+
+        // create sub-scope so globals can be overwritten
+        bin.EnterNewScope()
+
         // register the function parameters as variables
         for _, v := range sym.Parameters {
             bin.CurrentScope.RegisterVariable(v)
         }
+
 
         file.FunctionBodies[sym] = bin.bindStatement(file.FunctionBodiesSrc[sym])
     }
@@ -556,7 +591,7 @@ func (bin *Binder) bindBinaryExpression(expr *syntaxnodes.BinaryExpressionNode) 
 func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boundnodes.BoundExpressionNode {
 
     // is this actually a cast?
-    if len(expr.Parameters) == 1 {
+    if !expr.HasPackage && len(expr.Parameters) == 1 {
         // are we calling a type name?
         typ := LookupType(expr.Identifier.Buffer, expr.Identifier.Position, true)
         
@@ -571,11 +606,21 @@ func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boun
     // ------------------------
 
     // lookup the function
-    fnc := bin.LookupFunction(expr.Identifier.Buffer)
+    var fnc *symbols.FunctionSymbol
+    if expr.HasPackage {
+        fnc = bin.LookupFunctionInPackage(expr.Package.Buffer, expr.Identifier.Buffer)
+    } else {
+        fnc = bin.LookupFunction(expr.Identifier.Buffer)
+    }
 
     if fnc == nil {
-        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Could not find function '%s'!", expr.Identifier.Buffer))
-        return boundnodes.NewBoundErrorExpressionNode(expr)
+        if !expr.HasPackage {
+            error.Report(error.NewError(error.BND, expr.Identifier.Position, "Could not find function '%s'!", expr.Identifier.Buffer))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        } else {
+            error.Report(error.NewError(error.BND, expr.Identifier.Position.SpanBetween(expr.Package.Position), "Could not find function '%s::%s'!", expr.Package.Buffer, expr.Identifier.Buffer))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        }
     }
     
     // was the right amount of arguments given?
@@ -691,6 +736,25 @@ func (bin *Binder) LookupFunction(name string) *symbols.FunctionSymbol {
 
     // we got nothin man
     return nil
+}
+
+func (bin *Binder) LookupFunctionInPackage(pack string, name string) *symbols.FunctionSymbol {
+    var pck *symbols.PackageSymbol = nil
+
+    // look the package up
+    for _, p := range bin.CurrentPackage.LoadedPackages {
+        if p.Name() == pack {
+            pck = p
+            break
+        }
+    }
+
+    // did we find something?
+    if pck == nil {
+        return nil
+    }
+
+    return LookupFunctionInPackage(pck, name)
 }
 
 func LookupFunctionInPackage(pck *symbols.PackageSymbol, name string) *symbols.FunctionSymbol {

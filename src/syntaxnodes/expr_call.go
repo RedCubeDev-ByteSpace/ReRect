@@ -8,13 +8,19 @@ import (
 type CallExpressionNode struct {
     ExpressionNode
 
+    Package lexer.Token
+    HasPackage bool
+
     Identifier lexer.Token
     Parameters []ExpressionNode
     CloseParam lexer.Token
 }
 
-func NewCallExpressionNode(id lexer.Token, param []ExpressionNode, cprm lexer.Token) *CallExpressionNode {
+func NewCallExpressionNode(id lexer.Token, pack lexer.Token, hasPack bool, param []ExpressionNode, cprm lexer.Token) *CallExpressionNode {
     return &CallExpressionNode{
+        Package: pack,
+        HasPackage: hasPack,
+
         Identifier: id,
         Parameters: param,
         CloseParam: cprm,

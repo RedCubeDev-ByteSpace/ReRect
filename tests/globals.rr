@@ -1,0 +1,15 @@
+load sys include;
+load Other;
+
+var CoolGlobal int;
+
+function main() {
+    loop (10) {
+        addOne();
+        Print(string(Other::GetCoolerGlobal()));
+    }
+}
+
+function addOne() {
+    Other::SetCoolerGlobal(Other::GetCoolerGlobal() + "1");
+}

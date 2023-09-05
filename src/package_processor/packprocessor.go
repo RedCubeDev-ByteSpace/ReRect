@@ -20,6 +20,8 @@ type CompilationFile struct {
     Functions []*symbols.FunctionSymbol
     FunctionBodiesSrc map[*symbols.FunctionSymbol]syntaxnodes.StatementNode
     FunctionBodies    map[*symbols.FunctionSymbol]boundnodes.BoundStatementNode
+
+    Globals []*symbols.GlobalSymbol
 }
 
 func Init() {

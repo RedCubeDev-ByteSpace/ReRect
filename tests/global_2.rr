@@ -1,0 +1,15 @@
+package Other;
+// This file is part of the "Other" package (/namespace)
+
+// This global is only accessible in this package
+var CoolerGlobal string;
+
+// Cheeky getter
+function GetCoolerGlobal() string {
+    return CoolerGlobal;
+}
+
+// Even cheekier setter
+function SetCoolerGlobal(val string) {
+    CoolerGlobal <- val;
+}

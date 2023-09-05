@@ -19,6 +19,8 @@ import (
 type Evaluator struct {
     Functions map[*symbols.FunctionSymbol]*boundnodes.BoundBlockStatementNode
     StackFrames []*StackFrame
+
+    Globals map[symbols.VariableSymbol]interface{}
 }
 
 type StackFrame struct {
@@ -34,18 +36,35 @@ type StackFrame struct {
 // Helpers
 // --------------------------------------------------------
 func (evl *Evaluator) setVar(vari symbols.VariableSymbol, val interface{}) {
-    evl.stackFrame().Locals[vari] = val
+    if vari.Type() == symbols.ST_Global {
+        evl.Globals[vari] = val
+    } else {
+        evl.stackFrame().Locals[vari] = val
+    }
 }
 
 func (evl *Evaluator) getVar(vari symbols.VariableSymbol) interface{} {
-    val, ok := evl.stackFrame().Locals[vari]
-    
-    if !ok {
-        error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime variable lookup :)"))
-        return nil
-    }
+    if vari.Type() == symbols.ST_Global {
 
-    return val
+        val, ok := evl.Globals[vari]
+
+        if !ok {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime global lookup :)"))
+            return nil
+        }
+
+        return val
+    } else {
+
+        val, ok := evl.stackFrame().Locals[vari]
+
+        if !ok {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime variable lookup :)"))
+            return nil
+        }
+
+        return val
+    }
 }
 
 func (evl *Evaluator) stackFrame() *StackFrame {
@@ -60,6 +79,13 @@ func Evaluate(prg *compctl.CompilationResult) {
     evl := Evaluator{
         Functions: prg.Functions,
         StackFrames: make([]*StackFrame, 0),
+        Globals: make(map[symbols.VariableSymbol]interface{}),
+    }
+
+    // create all globals
+    for _, glb := range prg.Globals {
+        // initialize with default value for each datatype
+        evl.Globals[glb] = glb.VarType().Default
     }
 
     // look for a "main()" function in a "main" package
@@ -163,8 +189,11 @@ func (evl *Evaluator) evalStatement(stmt boundnodes.BoundStatementNode) {
     } else if stmt.Type() == boundnodes.BT_ApproachIStmt {
         evl.evalApproachStatement(stmt.(*boundnodes.BoundApproachStatementNode))
 
+    } else if stmt.Type() == boundnodes.BT_LabelIStmt {
+        // literally do nothing
+
     } else {
-        error.Report(error.NewError(error.RNT, stmt.Source().Position(), "Statement evaluation not implemented! You should implement NOW!"))
+        error.Report(error.NewError(error.RNT, stmt.Source().Position(), "Statement evaluation not implemented! You should implement NOW! (%s)", stmt.Type()))
     }
 }
 
@@ -259,8 +288,8 @@ func (evl *Evaluator) evalExpression(expr boundnodes.BoundExpressionNode) interf
         return evl.evalConversionExpression(expr.(*boundnodes.BoundConversionExpressionNode))
 
     } else {
-            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime label lookup :)"))
-            return nil
+        error.Report(error.NewError(error.RNT, expr.Source().Position(), "Expression evaluation not implemented! You should implement NOW! (%s)", expr.Type()))
+        return nil
     }
 }
 
