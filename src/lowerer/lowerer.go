@@ -11,18 +11,29 @@ import (
 	"bytespace.network/rerect/boundnodes"
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
+	packageprocessor "bytespace.network/rerect/package_processor"
 	"bytespace.network/rerect/symbols"
 )
 
 // Lower function - outside wrapper
-func Lower(stmt boundnodes.BoundStatementNode) *boundnodes.BoundBlockStatementNode {
-    // if stmt is not a block statement -> create one
-    if stmt.Type() != boundnodes.BT_BlockStmt {
-        stmt = boundnodes.NewBoundBlockStatementNode(stmt.Source(), []boundnodes.BoundStatementNode{stmt})
-    }
+func Lower(file *packageprocessor.CompilationFile) {
 
-    stmt = rewriteStatement(stmt)
-    return flatten(stmt.(*boundnodes.BoundBlockStatementNode))
+    for _, sym := range file.Functions {
+        stmt := file.FunctionBodies[sym]
+
+        // if stmt is not a block statement -> create one
+        if stmt.Type() != boundnodes.BT_BlockStmt {
+            stmt = boundnodes.NewBoundBlockStatementNode(stmt.Source(), []boundnodes.BoundStatementNode{stmt})
+        }
+
+        // rewrite the body (simplify statements)
+        stmt = rewriteStatement(stmt)
+
+        // flatten the body into one long list of statements (instead of nested blocks)
+        stmt = flatten(stmt.(*boundnodes.BoundBlockStatementNode))
+
+        file.FunctionBodies[sym] = stmt
+    }
 }
 
 func flatten(stmt *boundnodes.BoundBlockStatementNode) *boundnodes.BoundBlockStatementNode {
@@ -307,7 +318,7 @@ func rewriteLoopStatement(stmt *boundnodes.BoundLoopStatementNode) boundnodes.Bo
     iterator := symbols.NewLocalSymbol("__iterator", compunit.GlobalDataTypeRegister["int"])
 
     // create zero initializer
-    zeroLit := boundnodes.NewBoundLiteralExpressionNode(stmt.Source(), compunit.GlobalDataTypeRegister["int"], 0)
+    zeroLit := boundnodes.NewBoundLiteralExpressionNode(stmt.Source(), compunit.GlobalDataTypeRegister["int"], int32(0))
 
     // rewrite original upper bound
     upperBound := rewriteExpression(stmt.Amount)

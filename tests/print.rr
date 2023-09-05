@@ -6,6 +6,8 @@ function main() {
 }
 
 function gaming(aaa bool) int {
+    ok();
+
     if (aaa) {
         return (100 + 200);
     } else {
@@ -13,6 +15,8 @@ function gaming(aaa bool) int {
     }
 }
 
-//function gaming() gaming {
-    // we gaming again
-//}
+function ok() {
+    loop (10) {
+        Print("ok");
+    }
+}

@@ -18,13 +18,13 @@ func Load() {
 
 // A few helpers
 // -------------
-func registerPackage(name string) {
+func registerPackage(name string) *symbols.PackageSymbol {
     pck := compunit.GetPackage(name)
     if pck != nil {
         error.Report(error.NewError(error.GOP, span.Internal(), "Unable to register package '%s'! A package with that name already exists!", name))
     }
 
-    compunit.CreatePackage(name)
+    return compunit.CreatePackage(name)
 }
 
 func registerFunction(pack string, fnc *symbols.FunctionSymbol) {

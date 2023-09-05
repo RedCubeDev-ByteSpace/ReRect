@@ -10,14 +10,17 @@ type TypeSymbol struct {
 
     TypeGroup TypeGroupType
     TypeSize int
+
+    Default interface{}
 }
 
-func NewTypeSymbol(name string, subtypes []*TypeSymbol, grp TypeGroupType, sz int) *TypeSymbol {
+func NewTypeSymbol(name string, subtypes []*TypeSymbol, grp TypeGroupType, sz int, def interface{}) *TypeSymbol {
     return &TypeSymbol {
         TypeName: name,
         SubTypes: subtypes,
         TypeGroup: grp,
         TypeSize: sz,
+        Default: def,
     }
 }
 

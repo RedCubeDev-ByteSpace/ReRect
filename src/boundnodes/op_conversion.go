@@ -52,6 +52,12 @@ func ClassifyConversion(from *symbols.TypeSymbol, to *symbols.TypeSymbol) Conver
         return CT_Explicit
     }
 
+    // allow anything explicitly from string
+    if  from.Equal(compunit.GlobalDataTypeRegister["string"]) &&
+       !to.Equal(compunit.GlobalDataTypeRegister["void"]) {
+        return CT_Explicit
+    }
+
     // otherwise -> dont convert
     return CT_None
 }

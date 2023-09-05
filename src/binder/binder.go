@@ -13,6 +13,7 @@ import (
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
 	"bytespace.network/rerect/lexer"
+	packageprocessor "bytespace.network/rerect/package_processor"
 	"bytespace.network/rerect/span"
 	"bytespace.network/rerect/symbols"
 	"bytespace.network/rerect/syntaxnodes"
@@ -21,12 +22,9 @@ import (
 // --------------------------------------------------------
 // Function indexing
 // --------------------------------------------------------
-func IndexFunctions(pck *symbols.PackageSymbol, mem []syntaxnodes.MemberNode) ([]*symbols.FunctionSymbol, []syntaxnodes.StatementNode) {
-    syms := []*symbols.FunctionSymbol{}
-    bodies := []syntaxnodes.StatementNode{}
-
+func IndexFunctions(file *packageprocessor.CompilationFile) {
     // look through all member nodes
-    for _, v := range mem {
+    for _, v := range file.Members {
         // we're only looking for function nodes
         if v.Type() != syntaxnodes.NT_Function {
             continue
@@ -46,23 +44,22 @@ func IndexFunctions(pck *symbols.PackageSymbol, mem []syntaxnodes.MemberNode) ([
 
         // register a function symbol for this function
         fnc := symbols.NewFunctionSymbol(
+            file.Package,
             fncMem.FunctionName.Buffer,
             LookupTypeClause(fncMem.ReturnType),
             prms,
         )
 
-        ok := pck.TryRegisterFunction(fnc) 
+        ok := file.Package.TryRegisterFunction(fnc) 
 
         if !ok {
             error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Cannot register function '%s'! A function with that name already exists!", fnc.FuncName))
             continue
         }
 
-        syms = append(syms, fnc)
-        bodies = append(bodies, fncMem.Body)
+        file.Functions = append(file.Functions, fnc)
+        file.FunctionBodiesSrc[fnc] = fncMem.Body
     }
-
-    return syms, bodies
 }
 
 // --------------------------------------------------------
@@ -100,26 +97,22 @@ func (bin *Binder) PopLabels() {
 	bin.ContinueLabels = bin.ContinueLabels[:len(bin.ContinueLabels)-1]
 }
 
-func BindFunctions(pck *symbols.PackageSymbol, syms []*symbols.FunctionSymbol, bodies []syntaxnodes.StatementNode) []boundnodes.BoundStatementNode {
-    boundBodies := []boundnodes.BoundStatementNode{}
-
-    for i, v := range bodies {
+func BindFunctions(file *packageprocessor.CompilationFile) {
+    for _, sym := range file.Functions {
         // create a new binder
         bin := Binder{
-            CurrentPackage: pck,
-            CurrentFunction: syms[i],
+            CurrentPackage: file.Package,
+            CurrentFunction: sym,
             CurrentScope: NewScope(nil),
         }
 
         // register the function parameters as variables
-        for _, v := range syms[i].Parameters {
+        for _, v := range sym.Parameters {
             bin.CurrentScope.RegisterVariable(v)
         }
 
-        boundBodies = append(boundBodies, bin.bindStatement(v))
+        file.FunctionBodies[sym] = bin.bindStatement(file.FunctionBodiesSrc[sym])
     }
-
-    return boundBodies
 }
 
 // --------------------------------------------------------
@@ -459,14 +452,14 @@ func (bin *Binder) bindLiteralExpression(expr *syntaxnodes.LiteralExpressionNode
         typ = compunit.GlobalDataTypeRegister["bool"]
 
     } else if expr.Literal.Type == lexer.TT_Integer {
-        val, err := strconv.Atoi(expr.Literal.Buffer) 
+        val, err := strconv.ParseInt(expr.Literal.Buffer, 10, 32) 
         
         if err != nil {
             error.Report(error.NewError(error.BND, expr.Position(), "Could not convert '%s' to an integer!", expr.Literal.Buffer))
             return boundnodes.NewBoundErrorExpressionNode(expr)
         }
 
-        value = val
+        value = int32(val)
         typ = compunit.GlobalDataTypeRegister["int"]
 
     } else if expr.Literal.Type == lexer.TT_Float {
@@ -477,7 +470,7 @@ func (bin *Binder) bindLiteralExpression(expr *syntaxnodes.LiteralExpressionNode
             return boundnodes.NewBoundErrorExpressionNode(expr)
         }
 
-        value = val
+        value = float32(val)
         typ = compunit.GlobalDataTypeRegister["float"]
 
     } else {

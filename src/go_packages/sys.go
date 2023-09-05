@@ -12,8 +12,11 @@ import (
 )
 
 func LoadSys() {
-    registerPackage("sys")
+    sys := registerPackage("sys")
     registerFunction("sys", symbols.NewVMFunctionSymbol(
+        // The package this function belongs to
+        sys,
+
         // Function name
         "Print",
 
@@ -31,6 +34,7 @@ func LoadSys() {
 }
 
 // sys::Print(string)
-func Print(msg string) {
-    fmt.Println(msg)
+func Print(args []any) any {
+    fmt.Println(args[0].(string))
+    return nil
 }

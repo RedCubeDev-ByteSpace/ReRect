@@ -5,8 +5,7 @@
 package packageprocessor
 
 import (
-	"fmt"
-
+	"bytespace.network/rerect/boundnodes"
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
 	gopackages "bytespace.network/rerect/go_packages"
@@ -14,29 +13,45 @@ import (
 	"bytespace.network/rerect/syntaxnodes"
 )
 
+type CompilationFile struct {
+    Package *symbols.PackageSymbol
+    Members []syntaxnodes.MemberNode
+
+    Functions []*symbols.FunctionSymbol
+    FunctionBodiesSrc map[*symbols.FunctionSymbol]syntaxnodes.StatementNode
+    FunctionBodies    map[*symbols.FunctionSymbol]boundnodes.BoundStatementNode
+}
+
 func Init() {
     // load all native packages
     gopackages.Load()
 }
 
-func Process(mems [][]syntaxnodes.MemberNode) ([]*symbols.PackageSymbol, [][]syntaxnodes.MemberNode) {
-    packs := []*symbols.PackageSymbol{}
-    members := make([][]syntaxnodes.MemberNode, 0)
+func Process(mems [][]syntaxnodes.MemberNode) []*CompilationFile {
+    files := []*CompilationFile{}
 
     // Register all names first
     for _, mem := range mems {
         p := register(mem)
-        fmt.Println(p.PackName)
-        packs = append(packs, p)
-        members = append(members, mem)
+        //fmt.Println(p.PackName)
+
+        files = append(files, &CompilationFile{
+            Package: p,
+            Members: mem,
+
+            // create containers to be filled in by the binder later
+            Functions: []*symbols.FunctionSymbol{},
+            FunctionBodiesSrc: make(map[*symbols.FunctionSymbol]syntaxnodes.StatementNode),
+            FunctionBodies: make(map[*symbols.FunctionSymbol]boundnodes.BoundStatementNode),
+        })
     }
     
     // Link up the packages
-    for i, mem := range mems {
-        link(packs[i], mem)
+    for _, file := range files {
+        link(file.Package, file.Members)
     }
 
-    return packs, members
+    return files
 }
 
 func register(mem []syntaxnodes.MemberNode) *symbols.PackageSymbol {

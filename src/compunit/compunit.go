@@ -5,8 +5,6 @@
 package compunit
 
 import (
-	"fmt"
-
 	"bytespace.network/rerect/symbols"
 )
 
@@ -27,7 +25,7 @@ func RegisterSource(file string, content string) int {
         Content: content,
     })
 
-    fmt.Printf("Has registered file '%s': \n%s\n", file, content)
+    //fmt.Printf("Has registered file '%s': \n%s\n", file, content)
 
     return len(SourceFileRegister) - 1
 }
@@ -35,21 +33,21 @@ func RegisterSource(file string, content string) int {
 // Register of global data types
 // -----------------------------
 var GlobalDataTypeRegister map[string]*symbols.TypeSymbol = map[string]*symbols.TypeSymbol {
-    "error": symbols.NewTypeSymbol("error", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0), // marker type for binding errors
+    "error": symbols.NewTypeSymbol("error", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // marker type for binding errors
     
-    "void": symbols.NewTypeSymbol("void", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0), // nothin
+    "void": symbols.NewTypeSymbol("void", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // nothin
     
-    "long": symbols.NewTypeSymbol("long", make([]*symbols.TypeSymbol, 0), symbols.INT, 64), // 64 bit int
-    "int" : symbols.NewTypeSymbol("int" , make([]*symbols.TypeSymbol, 0), symbols.INT, 32), // 32 bit int
-    "word": symbols.NewTypeSymbol("word", make([]*symbols.TypeSymbol, 0), symbols.INT, 16), // 16 bit int
-    "byte": symbols.NewTypeSymbol("byte", make([]*symbols.TypeSymbol, 0), symbols.INT,  8), // 8  bit int
+    "long": symbols.NewTypeSymbol("long", make([]*symbols.TypeSymbol, 0), symbols.INT, 64, 0), // 64 bit int
+    "int" : symbols.NewTypeSymbol("int" , make([]*symbols.TypeSymbol, 0), symbols.INT, 32, 0), // 32 bit int
+    "word": symbols.NewTypeSymbol("word", make([]*symbols.TypeSymbol, 0), symbols.INT, 16, 0), // 16 bit int
+    "byte": symbols.NewTypeSymbol("byte", make([]*symbols.TypeSymbol, 0), symbols.INT,  8, 0), // 8  bit int
 
-    "bool": symbols.NewTypeSymbol("bool", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0), // boolean value
+    "bool": symbols.NewTypeSymbol("bool", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, false), // boolean value
 
-    "float" : symbols.NewTypeSymbol("float" , make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 32), // 32 bit float
-    "double": symbols.NewTypeSymbol("double", make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 64), // 64 bit float
+    "float" : symbols.NewTypeSymbol("float" , make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 32, 0.0), // 32 bit float
+    "double": symbols.NewTypeSymbol("double", make([]*symbols.TypeSymbol, 0), symbols.FLOAT, 64, 0.0), // 64 bit float
     
-    "string": symbols.NewTypeSymbol("string", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0), // string
+    "string": symbols.NewTypeSymbol("string", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, ""), // string
 }
 
 // Register of known packages
