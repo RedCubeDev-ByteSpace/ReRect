@@ -6,6 +6,7 @@ package evaluator
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"bytespace.network/rerect/boundnodes"
@@ -610,273 +611,297 @@ func (evl *Evaluator) evalNameExpression(expr *boundnodes.BoundNameExpressionNod
 func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionExpressionNode) interface{} {
     val := evl.evalExpression(expr.Value)
 
+    // Casting anything to 'any'
+    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["any"]) {
+        return interface{}(val)
+    }
+
     //fmt.Printf("Converting %s(%s) -> %s\n", expr.Value.ExprType().Name(), expr.Value.Type(), expr.TargetType.Name())
 
     // Casting to long
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["long"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return val
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return int64(val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return int64(val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return int64(val.(int8))
-        }
+        case int64:
+            return val;
+
+        case int32:
+            return int64(v)
+
+        case int16:
+            return int64(v)
+
+        case int8:
+            return int64(v)
 
         // Cross cast
         // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return int64(val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return int64(val.(float32))
-        }
+        case float64:
+            return int64(v)
+
+        case float32:
+            return int64(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseInt(val.(string), 10, 64)
+        case string:
+            vl, err := strconv.ParseInt(v, 10, 64)
             if err != nil {
                 panic(err)
             }
 
-            return int64(v)
+            return int64(vl)
         }
     }
 
     // Casting to int
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["int"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return int32(val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return val
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return int32(val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return int32(val.(int8))
-        }
+        case int64:
+            return int32(v);
+
+        case int32:
+            return v
+
+        case int16:
+            return int32(v)
+
+        case int8:
+            return int32(v)
 
         // Cross cast
         // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return int32(val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return int32(val.(float32))
-        }
+        case float64:
+            return int32(v)
+
+        case float32:
+            return int32(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseInt(val.(string), 10, 32)
+        case string:
+            vl, err := strconv.ParseInt(v, 10, 32)
             if err != nil {
                 panic(err)
             }
 
-            return int32(v)
+            return int32(vl)
         }
     }
     
     // Casting to word
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["word"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return int16(val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return int16(val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return val
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return int16(val.(int8))
-        }
+        case int64:
+            return int16(v);
+
+        case int32:
+            return int16(v)
+
+        case int16:
+            return v
+
+        case int8:
+            return int16(v)
 
         // Cross cast
         // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return int16(val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return int16(val.(float32))
-        }
+        case float64:
+            return int16(v)
+
+        case float32:
+            return int16(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseInt(val.(string), 10, 16)
+        case string:
+            vl, err := strconv.ParseInt(v, 10, 16)
             if err != nil {
                 panic(err)
             }
 
-            return int16(v)
+            return int16(vl)
         }
     }
     
     // Casting to byte
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["byte"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return int8(val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return int8(val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return int8(val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return val
-        }
+        case int64:
+            return int8(v);
+
+        case int32:
+            return int8(v)
+
+        case int16:
+            return int8(v)
+
+        case int8:
+            return v
 
         // Cross cast
         // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return int8(val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return int8(val.(float32))
-        }
+        case float64:
+            return int8(v)
+
+        case float32:
+            return int8(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseInt(val.(string), 10, 8)
+        case string:
+            vl, err := strconv.ParseInt(v, 10, 8)
             if err != nil {
                 panic(err)
             }
 
-            return int8(v)
+            return int8(vl)
         }
     }
     
     // Casting to double
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["double"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return float64(val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return float64(val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return float64(val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return float64(val.(int8))
-        }
+        case float64:
+            return v
 
-        // Cross cast
-        // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return val
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return float64(val.(float32))
-        }
+        case float32:
+            return float64(v)
+
+        // Cross casts
+        // -----------
+        case int64:
+            return float64(v);
+
+        case int32:
+            return float64(v)
+
+        case int16:
+            return float64(v)
+
+        case int8:
+            return float64(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseFloat(val.(string), 64)
+        case string:
+            vl, err := strconv.ParseFloat(v, 64)
             if err != nil {
                 panic(err)
             }
 
-            return float64(v)
+            return float64(vl)
         }
     }
 
     // Casting to float
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["float"]) {
+        switch v := val.(type) {
+
         // Up / Down casts
         // ---------------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return float32(val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return float32(val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return float32(val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return float32(val.(int8))
-        }
+        case float64:
+            return float32(v)
 
-        // Cross cast
-        // ----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return float32(val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return val
-        }
+        case float32:
+            return v
+
+        // Cross casts
+        // -----------
+        case int64:
+            return float32(v);
+
+        case int32:
+            return float32(v)
+
+        case int16:
+            return float32(v)
+
+        case int8:
+            return float32(v)
 
         // From string
         // -----------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["string"]) {
-            v, err := strconv.ParseFloat(val.(string), 32)
+        case string:
+            vl, err := strconv.ParseFloat(v, 32)
             if err != nil {
                 panic(err)
             }
 
-            return float32(v)
+            return float32(vl)
         }
     }
 
     // Casting to string
     if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["string"]) {
-        // Integer
-        // -------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["long"]) {
-            return fmt.Sprintf("%d", val.(int64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["int"]) {
-            return fmt.Sprintf("%d", val.(int32))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["word"]) {
-            return fmt.Sprintf("%d", val.(int16))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["byte"]) {
-            return fmt.Sprintf("%d", val.(int8))
-        }
+        switch v := val.(type) {
+
+        // Integers
+        // --------
+        case int64:
+            return fmt.Sprintf("%d", v)
+
+        case int32:
+            return fmt.Sprintf("%d", v)
+
+        case int16:
+            return fmt.Sprintf("%d", v)
+
+        case int8:
+            return fmt.Sprintf("%d", v)
 
         // Floats
         // ------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["double"]) {
-            return fmt.Sprintf("%f", val.(float64))
-        }
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["float"]) {
-            return fmt.Sprintf("%f", val.(float32))
-        }
+        case float64:
+            return fmt.Sprintf("%d", v)
+
+        case float32:
+            return fmt.Sprintf("%d", v)
 
         // Booleans
         // --------
-        if expr.Value.ExprType().Equal(compunit.GlobalDataTypeRegister["bool"]) {
-            if val.(bool) {
+        case bool:
+            if v {
                 return "true"
             } else {
                 return "false"
             }
+
+        case ArrayInstance:
+            return fmt.Sprintf("[%s]", v.Type.Name())
+
+        // Strings
+        // -------
+        case string:
+            return v
         }
     }
 
-    error.Report(error.NewError(error.RNT, expr.Source().Position(), "Conversion not implemented (%s to %s)! You should implement NOW!", expr.Value.ExprType().Name(), expr.TargetType.Name()))
+    // Casting to array
+    if expr.TargetType.TypeGroup == symbols.ARR {
+        switch v := val.(type) {
+        case ArrayInstance:
+            // only cast when the internal types match
+            if v.Type.Equal(expr.TargetType) {
+                return v
+            }
+        }
+    }
+
+    error.Report(error.NewError(error.RNT, expr.Source().Position(), "Unable to cast %s to %s!", reflect.TypeOf(val), expr.TargetType.Name()))
     return nil
 }

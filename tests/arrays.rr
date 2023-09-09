@@ -1,0 +1,7 @@
+package main;
+load sys include;
+
+function main() {
+    var gaming array[int];
+    Print("ok cool");
+}

@@ -1,0 +1,7 @@
+load sys;
+
+function main() {
+    loop(-10) {
+        sys::Print("You fool.");
+    }
+}

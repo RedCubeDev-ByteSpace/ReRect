@@ -712,6 +712,22 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode) *symbols.TypeSymbol {
         return compunit.GlobalDataTypeRegister["void"]
     }
 
+    // if this is an array type, we will need to construct it
+    if typ.TypeName.Buffer == "array" {
+        // make sure we have exactly one subtype 
+        if len(typ.SubTypes) != 1 {
+            error.Report(error.NewError(error.BND, typ.Position(), "Data type '%s' takes exactly one subtype, got: %d!", typ.TypeName.Buffer, len(typ.SubTypes)))
+            return compunit.GlobalDataTypeRegister["error"]
+        }
+
+        // if we do -> resolve it
+        subtype := LookupTypeClause(typ.SubTypes[0])
+
+        // create a new type symbol
+        arrsym := symbols.NewTypeSymbol(subtype.Name() + " Array", []*symbols.TypeSymbol{subtype}, symbols.ARR, 0, []interface{}{})
+        return arrsym
+    }
+
     // otherwise -> look up the type
     return LookupType(typ.TypeName.Buffer, typ.Position(), false)
 }

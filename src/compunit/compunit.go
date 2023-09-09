@@ -36,6 +36,7 @@ var GlobalDataTypeRegister map[string]*symbols.TypeSymbol = map[string]*symbols.
     "error": symbols.NewTypeSymbol("error", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // marker type for binding errors
     
     "void": symbols.NewTypeSymbol("void", make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // nothin
+    "any":  symbols.NewTypeSymbol("any" , make([]*symbols.TypeSymbol, 0), symbols.NONE, 0, nil), // anythin
     
     "long": symbols.NewTypeSymbol("long", make([]*symbols.TypeSymbol, 0), symbols.INT, 64, int64(0)), // 64 bit int
     "int" : symbols.NewTypeSymbol("int" , make([]*symbols.TypeSymbol, 0), symbols.INT, 32, int32(0)), // 32 bit int

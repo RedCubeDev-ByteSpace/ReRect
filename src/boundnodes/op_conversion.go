@@ -21,6 +21,18 @@ func ClassifyConversion(from *symbols.TypeSymbol, to *symbols.TypeSymbol) Conver
         return CT_Identity
     }
 
+    // Anything can be cast to any
+    if to.Equal(compunit.GlobalDataTypeRegister["any"]) &&
+       !from.Equal(compunit.GlobalDataTypeRegister["void"]) {
+        return CT_Implicit
+    }
+
+    // any can be cast to anything
+    if !to.Equal(compunit.GlobalDataTypeRegister["void"]) &&
+        from.Equal(compunit.GlobalDataTypeRegister["any"]){
+        return CT_Implicit
+    }
+
     // up and down casts
     if (from.TypeGroup == symbols.INT   && to.TypeGroup == symbols.INT) ||
        (from.TypeGroup == symbols.FLOAT && to.TypeGroup == symbols.FLOAT) {
