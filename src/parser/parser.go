@@ -70,6 +70,29 @@ func (prs *Parser) consume(typ lexer.TokenType) lexer.Token {
     return prs.peek(-1) // return the one we were just at
 }
 
+func (prs *Parser) consumeWord(word string) lexer.Token {
+    // get an id token
+    id := prs.consume(lexer.TT_Identifier)
+
+    // make sure it matches our word
+    if id.Buffer != word {
+        // report this error
+        error.Report(error.NewError(error.PRS, prs.current().Position, "Expected keyword '%s', instead got: '%s'!", word, id.Buffer))
+       
+        // rewind
+        prs.step(-1)
+
+        // fabricate a token of this kind to keep the compilation going
+        return lexer.Token {
+           Type: lexer.TT_Identifier,
+           Buffer: word,
+        }
+    }
+
+    // cool beans
+    return id
+}
+
 // --------------------------------------------------------
 // Parsing
 // --------------------------------------------------------
@@ -563,6 +586,20 @@ func (prs *Parser) parseBinaryExpression(lastPrecedence int) syntaxnodes.Express
     // otherwise: parse left side
     } else {
         left = prs.parsePrimaryExpression()
+
+        for prs.current().Type == lexer.TT_OpenBrackets ||
+            prs.current().Type == lexer.TT_LeftArrow {
+
+            // Is this actually an array index?
+            if prs.current().Type == lexer.TT_OpenBrackets {
+                left = prs.parseArrayIndexExpression(left)
+            }
+
+            // Is this actually an assignment?
+            if prs.current().Type == lexer.TT_LeftArrow {
+                left = prs.parseAssignmentExpression(left)
+            }
+        }
     }
 
     for {
@@ -596,13 +633,9 @@ func (prs *Parser) parsePrimaryExpression() syntaxnodes.ExpressionNode {
     
     // Name, assignment, or call expression   
     } else if prs.current().Type == lexer.TT_Identifier {
-        // Assignment expression
-        if prs.peek(1).Type == lexer.TT_LeftArrow {
-            return prs.parseAssignmentExpression()
-        
         // Call expression
-        } else if prs.peek(1).Type == lexer.TT_OpenParenthesis ||
-                  prs.peek(1).Type == lexer.TT_Package {
+        if prs.peek(1).Type == lexer.TT_OpenParenthesis ||
+           prs.peek(1).Type == lexer.TT_Package {
             return prs.parseCallExpression()
 
         // Name expression
@@ -610,8 +643,13 @@ func (prs *Parser) parsePrimaryExpression() syntaxnodes.ExpressionNode {
             return prs.parseNameExpression()
         }
 
+    // Parenthesized expressions
     } else if prs.current().Type == lexer.TT_OpenParenthesis {
         return prs.parseParenthesizedExpression()
+
+    // Array creation
+    } else if prs.current().Type == lexer.TT_KW_Make {
+        return prs.parseMakeArrayExpression()
 
     // Dude i have no idea
     } else {
@@ -629,10 +667,7 @@ func (prs *Parser) parseLiteralExpression() *syntaxnodes.LiteralExpressionNode {
     return syntaxnodes.NewLiteralExpressionNode(lit)
 }
 
-func (prs *Parser) parseAssignmentExpression() *syntaxnodes.AssignmentExpressionNode {
-    // consume the variable name
-    id := prs.consume(lexer.TT_Identifier)
-
+func (prs *Parser) parseAssignmentExpression(expr syntaxnodes.ExpressionNode) *syntaxnodes.AssignmentExpressionNode {
     // consume '<-'
     prs.consume(lexer.TT_LeftArrow)
 
@@ -640,7 +675,7 @@ func (prs *Parser) parseAssignmentExpression() *syntaxnodes.AssignmentExpression
     val := prs.parseExpression()
 
     // create new node
-    return syntaxnodes.NewAssignmentExpressionNode(id, val)
+    return syntaxnodes.NewAssignmentExpressionNode(expr, val)
 }
 
 func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
@@ -701,4 +736,72 @@ func (prs *Parser) parseParenthesizedExpression() *syntaxnodes.ParenthesizedExpr
 
     // create a new node
     return syntaxnodes.NewParenthesizedExpressionNode(start, expr, end)
+}
+
+func (prs *Parser) parseMakeArrayExpression() *syntaxnodes.MakeArrayExpressionNode {
+    // consume the make kw
+    kw := prs.consume(lexer.TT_KW_Make)
+
+    // consume the datatype
+    typ := prs.parseTypeClause()
+
+    // consume 'array' word
+    prs.consumeWord("array")
+    
+    // consume either length or a literal
+    var length syntaxnodes.ExpressionNode
+    var initializer []syntaxnodes.ExpressionNode
+    hasInitializer := false
+
+    var closing lexer.Token
+
+    // We got a literal
+    if prs.current().Type == lexer.TT_OpenBraces {
+        // consume {
+        prs.consume(lexer.TT_OpenBraces)
+
+        for prs.current().Type != lexer.TT_CloseBraces &&
+            prs.current().Type != lexer.TT_EOF {
+    
+            initializer = append(initializer, prs.parseExpression())
+
+            // Require a comma after every entry
+            if prs.current().Type == lexer.TT_Comma {
+                prs.consume(lexer.TT_Comma)
+            } else {
+                break
+            }
+        }
+
+        // consume }
+        closing = prs.consume(lexer.TT_CloseBraces)
+
+        hasInitializer = true
+
+    // We got a classic length generation
+    } else {
+        // consume (
+        prs.consume(lexer.TT_OpenParenthesis)
+
+        // consume length
+        length = prs.parseExpression()
+
+        // consume )
+        closing = prs.consume(lexer.TT_CloseParenthesis)
+    }
+
+    return syntaxnodes.NewMakeArrayExpressionNode(kw, closing, typ, length, initializer, hasInitializer)
+}
+
+func (prs *Parser) parseArrayIndexExpression(expr syntaxnodes.ExpressionNode) *syntaxnodes.ArrayIndexExpressionNode {
+    // consume [
+    prs.consume(lexer.TT_OpenBrackets)
+
+    // parse index
+    idx := prs.parseExpression()
+
+    // consume ]
+    prs.consume(lexer.TT_CloseBrackets)
+
+    return syntaxnodes.NewArrayIndexExpressionNode(expr, idx)
 }

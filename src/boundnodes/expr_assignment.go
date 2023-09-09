@@ -12,14 +12,14 @@ type BoundAssignmentExpressionNode struct {
 
     SourceNode syntaxnodes.SyntaxNode
 
-    Variable symbols.VariableSymbol
+    Expression BoundExpressionNode
     Value BoundExpressionNode
 }
 
-func NewBoundAssignmentExpressionNode(src syntaxnodes.SyntaxNode, vari symbols.VariableSymbol, val BoundExpressionNode) *BoundAssignmentExpressionNode {
+func NewBoundAssignmentExpressionNode(src syntaxnodes.SyntaxNode, expr BoundExpressionNode, val BoundExpressionNode) *BoundAssignmentExpressionNode {
     return &BoundAssignmentExpressionNode {
         SourceNode: src,
-        Variable: vari,
+        Expression: expr,
         Value: val,
     }
 }
@@ -33,5 +33,5 @@ func (nd *BoundAssignmentExpressionNode) Source() syntaxnodes.SyntaxNode {
 }
 
 func (nd *BoundAssignmentExpressionNode) ExprType() *symbols.TypeSymbol {
-    return nd.Variable.VarType()
+    return nd.Value.ExprType()
 } 

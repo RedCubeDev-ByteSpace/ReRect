@@ -58,6 +58,8 @@ const (
     NT_CallExpr          SyntaxNodeType = "Call expression node"
     NT_NameExpr          SyntaxNodeType = "Name expression node"
     NT_ParenthesizedExpr SyntaxNodeType = "Parenthesized expression node"
+    NT_MakeArrayExpr     SyntaxNodeType = "Array creation expression node"
+    NT_ArrayIndexExpr    SyntaxNodeType = "Array index expression node"
 
     NT_ErrorExpr         SyntaxNodeType = "Error expression node"
 

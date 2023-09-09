@@ -423,6 +423,10 @@ func rewriteExpression(expr boundnodes.BoundExpressionNode) boundnodes.BoundExpr
         return rewriteNameExpression(expr.(*boundnodes.BoundNameExpressionNode))
     } else if expr.Type() == boundnodes.BT_ConversionExpr {
         return rewriteConversionExpression(expr.(*boundnodes.BoundConversionExpressionNode))
+    } else if expr.Type() == boundnodes.BT_MakeArrayExpr {
+        return rewriteMakeArrayExpression(expr.(*boundnodes.BoundMakeArrayExpressionNode))
+    } else if expr.Type() == boundnodes.BT_ArrayIndexExpr {
+        return rewriteArrayIndexExpression(expr.(*boundnodes.BoundArrayIndexExpressionNode))
     } else {
         error.Report(error.NewError(error.LWR, expr.Source().Position(), "Unable to rewrite expression '%s', no rewriter implemented! You should implement NOW!", expr.Type()))
         return expr
@@ -434,8 +438,9 @@ func rewriteLiteralExpression(expr *boundnodes.BoundLiteralExpressionNode) bound
 }
 
 func rewriteAssignmentExpression(expr *boundnodes.BoundAssignmentExpressionNode) boundnodes.BoundExpressionNode {
+    exp := rewriteExpression(expr.Expression)
     val := rewriteExpression(expr.Value)
-    return boundnodes.NewBoundAssignmentExpressionNode(expr.Source(), expr.Variable, val)
+    return boundnodes.NewBoundAssignmentExpressionNode(expr.Source(), exp, val)
 }
 
 func rewriteUnaryExpression(expr *boundnodes.BoundUnaryExpressionNode) boundnodes.BoundExpressionNode {
@@ -467,4 +472,25 @@ func rewriteNameExpression(expr *boundnodes.BoundNameExpressionNode) boundnodes.
 func rewriteConversionExpression(expr *boundnodes.BoundConversionExpressionNode) boundnodes.BoundExpressionNode {
     val := rewriteExpression(expr.Value)
     return boundnodes.NewBoundConversionExpressionNode(expr.Source(), val, expr.TargetType)
+}
+
+func rewriteMakeArrayExpression(expr *boundnodes.BoundMakeArrayExpressionNode) boundnodes.BoundExpressionNode {
+    if !expr.HasInitializer {
+        length := rewriteExpression(expr.Length)
+        return boundnodes.NewBoundMakeArrayExpressionNode(expr.Source(), expr.ArrType, length, expr.Initializer, expr.HasInitializer)
+    } else {
+        initializers := []boundnodes.BoundExpressionNode{}
+
+        for _, v := range expr.Initializer {
+            initializers = append(initializers, rewriteExpression(v))
+        }
+
+        return boundnodes.NewBoundMakeArrayExpressionNode(expr.Source(), expr.ArrType, expr.Length, initializers, expr.HasInitializer)
+     }
+}
+func rewriteArrayIndexExpression(expr *boundnodes.BoundArrayIndexExpressionNode) boundnodes.BoundExpressionNode {
+    src := rewriteExpression(expr.SourceArray)
+    idx := rewriteExpression(expr.Index)
+
+    return boundnodes.NewBoundArrayIndexExpressionNode(expr.Source(), src, idx)
 }

@@ -1,26 +1,25 @@
 package syntaxnodes
 
 import (
-	"bytespace.network/rerect/lexer"
 	"bytespace.network/rerect/span"
 )
 
 type AssignmentExpressionNode struct {
     ExpressionNode
 
-    VarName lexer.Token
     Expression ExpressionNode
+    Value ExpressionNode
 }
 
-func NewAssignmentExpressionNode(varname lexer.Token, expr ExpressionNode) *AssignmentExpressionNode {
+func NewAssignmentExpressionNode(expr ExpressionNode, val ExpressionNode) *AssignmentExpressionNode {
     return &AssignmentExpressionNode{
-        VarName: varname,
         Expression: expr,
+        Value: val,
     }
 }
 
 func (n *AssignmentExpressionNode) Position() span.Span {
-    return n.VarName.Position.SpanBetween(n.Expression.Position())
+    return n.Expression.Position().SpanBetween(n.Expression.Position())
 }
 
 func (n *AssignmentExpressionNode) Type() SyntaxNodeType {

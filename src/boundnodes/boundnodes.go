@@ -65,6 +65,8 @@ const (
     BT_CallExpr        BoundNodeType = "Call expression"
     BT_NameExpr        BoundNodeType = "Name expression"
     BT_ConversionExpr  BoundNodeType = "Conversion expression"
+    BT_MakeArrayExpr   BoundNodeType = "Array creation expression"
+    BT_ArrayIndexExpr  BoundNodeType = "Array index expression"
 
     BT_ErrorExpr       BoundNodeType = "Error expression"
 )

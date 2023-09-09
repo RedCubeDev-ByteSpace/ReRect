@@ -459,6 +459,12 @@ func (bin *Binder) bindExpression(expr syntaxnodes.ExpressionNode) boundnodes.Bo
     } else if expr.Type() == syntaxnodes.NT_NameExpr {
         return bin.bindNameExpression(expr.(*syntaxnodes.NameExpressionNode))
 
+    } else if expr.Type() == syntaxnodes.NT_MakeArrayExpr {
+        return bin.bindMakeArrayExpression(expr.(*syntaxnodes.MakeArrayExpressionNode))
+    
+    } else if expr.Type() == syntaxnodes.NT_ArrayIndexExpr {
+        return bin.bindArrayIndexExpression(expr.(*syntaxnodes.ArrayIndexExpressionNode))
+
     } else {
         error.Report(error.NewError(error.BND, expr.Position(), "Unknown expression type '%s'!", expr.Type()))
         return boundnodes.NewBoundErrorExpressionNode(expr)
@@ -526,23 +532,25 @@ func (bin *Binder) bindParenthesizedExpression(expr *syntaxnodes.ParenthesizedEx
 }
 
 func (bin *Binder) bindAssignmentExpression(expr *syntaxnodes.AssignmentExpressionNode) boundnodes.BoundExpressionNode {
-    // look up variable
-    vari := bin.CurrentScope.LookupVariable(expr.VarName.Buffer)
+    // bind the source expression
+    exp := bin.bindExpression(expr.Expression)
 
-    // did we find one?
-    if vari == nil {
-        error.Report(error.NewError(error.BND, expr.Position(), "Could not find variable called '%s'!", expr.VarName.Buffer))
+    // make sure we're allowed to assign to this type of expression
+    if exp.Type() != boundnodes.BT_NameExpr &&
+       exp.Type() != boundnodes.BT_ArrayIndexExpr {
+
+        error.Report(error.NewError(error.BND, expr.Position(), "Cannot assign to expression of type '%s'!", expr.Expression.Type()))
         return boundnodes.NewBoundErrorExpressionNode(expr)
     }
 
     // bind assignment value
-    val := bin.bindExpression(expr.Expression)
+    val := bin.bindExpression(expr.Value)
 
     // make sure the data types match
-    val = bin.bindConversion(val, vari.VarType(), false)
+    val = bin.bindConversion(val, exp.ExprType(), false)
 
     // cool
-    return boundnodes.NewBoundAssignmentExpressionNode(expr, vari, val)
+    return boundnodes.NewBoundAssignmentExpressionNode(expr, exp, val)
 }
 
 func (bin *Binder) bindUnaryExpression(expr *syntaxnodes.UnaryExpressionNode) boundnodes.BoundExpressionNode {
@@ -658,6 +666,60 @@ func (bin *Binder) bindNameExpression(expr *syntaxnodes.NameExpressionNode) boun
     return boundnodes.NewBoundNameExpressionNode(expr, vari)
 }
 
+func (bin *Binder) bindMakeArrayExpression(expr *syntaxnodes.MakeArrayExpressionNode) boundnodes.BoundExpressionNode {
+    // resolve the array type
+    typ := LookupTypeClause(expr.ArrType)
+
+    // create an array type for it
+    arrtyp := createArrayType(typ)
+
+    // bind either the length or the initializer
+    var length boundnodes.BoundExpressionNode
+    var initializer []boundnodes.BoundExpressionNode
+
+    if !expr.HasInitializers {
+        // bind the length expression
+        length = bin.bindExpression(expr.Length)
+        
+        // make sure its an int
+        length = bin.bindConversion(length, compunit.GlobalDataTypeRegister["int"], false)
+
+    } else {
+        // bind each element of the initializer
+        for _, v := range expr.Initializers {
+            entry := bin.bindExpression(v)
+
+            // make sure the types match
+            entry = bin.bindConversion(entry, typ, false)
+
+            // add it to the list
+            initializer = append(initializer, entry)
+        }
+    }
+
+    return boundnodes.NewBoundMakeArrayExpressionNode(expr, arrtyp, length, initializer, expr.HasInitializers)
+}
+
+func (bin *Binder) bindArrayIndexExpression(expr *syntaxnodes.ArrayIndexExpressionNode) boundnodes.BoundExpressionNode {
+    // bind the source of the array
+    src := bin.bindExpression(expr.Expression)
+
+    // make sure the src is an array
+    if src.ExprType().TypeGroup != symbols.ARR {
+        error.Report(error.NewError(error.BND, expr.Expression.Position(), "Indexing is only allowed on array types, got '%s'!", src.ExprType().Name()))
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
+
+    // bind the index
+    idx := bin.bindExpression(expr.Index)
+
+    // make sure the index is an int
+    idx = bin.bindConversion(idx, compunit.GlobalDataTypeRegister["int"], false)
+
+    // ok cool
+    return boundnodes.NewBoundArrayIndexExpressionNode(expr, src, idx)
+}
+
 // --------------------------------------------------------
 // Utils
 // --------------------------------------------------------
@@ -724,12 +786,16 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode) *symbols.TypeSymbol {
         subtype := LookupTypeClause(typ.SubTypes[0])
 
         // create a new type symbol
-        arrsym := symbols.NewTypeSymbol(subtype.Name() + " Array", []*symbols.TypeSymbol{subtype}, symbols.ARR, 0, []interface{}{})
+        arrsym := createArrayType(subtype) 
         return arrsym
     }
 
     // otherwise -> look up the type
     return LookupType(typ.TypeName.Buffer, typ.Position(), false)
+}
+
+func createArrayType(subtype *symbols.TypeSymbol) *symbols.TypeSymbol {
+    return symbols.NewTypeSymbol(subtype.Name() + " Array", []*symbols.TypeSymbol{subtype}, symbols.ARR, 0, nil)
 }
 
 func (bin *Binder) LookupFunction(name string) *symbols.FunctionSymbol {

@@ -138,6 +138,11 @@ func Compile(srcFiles []string) *CompilationResult {
         lowerer.Lower(file)
     }
 
+    if error.HasErrors() {
+        error.Output()
+        return compFailed()
+    }
+
     // Bring the compilation result into a usable format
     // -------------------------------------------------
     res := &CompilationResult{

@@ -86,7 +86,7 @@ func Evaluate(prg *compctl.CompilationResult) {
     // create all globals
     for _, glb := range prg.Globals {
         // initialize with default value for each datatype
-        evl.Globals[glb] = glb.VarType().Default
+        evl.Globals[glb] = evl.getDefault(glb.VarType())
     }
 
     // look for a "main()" function in a "main" package
@@ -199,7 +199,7 @@ func (evl *Evaluator) evalStatement(stmt boundnodes.BoundStatementNode) {
 }
 
 func (evl *Evaluator) evalDeclarationStatement(stmt *boundnodes.BoundDeclarationStatementNode) {
-    init := stmt.Variable.VarType().Default
+    init := evl.getDefault(stmt.Variable.VarType())
 
     if stmt.HasInitializer {
         init = evl.evalExpression(stmt.Initializer)
@@ -288,6 +288,12 @@ func (evl *Evaluator) evalExpression(expr boundnodes.BoundExpressionNode) interf
     } else if expr.Type() == boundnodes.BT_ConversionExpr {
         return evl.evalConversionExpression(expr.(*boundnodes.BoundConversionExpressionNode))
 
+    } else if expr.Type() == boundnodes.BT_MakeArrayExpr {
+        return evl.evalMakeArrayExpression(expr.(*boundnodes.BoundMakeArrayExpressionNode))
+        
+    } else if expr.Type() == boundnodes.BT_ArrayIndexExpr {
+        return evl.evalArrayIndexExpression(expr.(*boundnodes.BoundArrayIndexExpressionNode))
+
     } else {
         error.Report(error.NewError(error.RNT, expr.Source().Position(), "Expression evaluation not implemented! You should implement NOW! (%s)", expr.Type()))
         return nil
@@ -300,7 +306,23 @@ func (evl *Evaluator) evalLiteralExpression(expr *boundnodes.BoundLiteralExpress
 
 func (evl *Evaluator) evalAssignmentExpression(expr *boundnodes.BoundAssignmentExpressionNode) interface{} {
     val := evl.evalExpression(expr.Value)
-    evl.setVar(expr.Variable, val)
+
+    // classic variable assignment
+    if expr.Expression.Type() == boundnodes.BT_NameExpr {
+        evl.setVar(expr.Expression.(*boundnodes.BoundNameExpressionNode).Variable, val)
+
+    // array index assignment
+    } else if expr.Expression.Type() == boundnodes.BT_ArrayIndexExpr {
+        exp := expr.Expression.(*boundnodes.BoundArrayIndexExpressionNode)
+
+        // get the source array
+        src := evl.evalExpression(exp.SourceArray).(*ArrayInstance)
+        idx := evl.evalExpression(exp.Index).(int32)
+
+        // assign the value
+        src.Elements[idx] = val
+    }
+
     return val
 }
 
@@ -881,7 +903,7 @@ func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionE
                 return "false"
             }
 
-        case ArrayInstance:
+        case *ArrayInstance:
             return fmt.Sprintf("[%s]", v.Type.Name())
 
         // Strings
@@ -894,7 +916,7 @@ func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionE
     // Casting to array
     if expr.TargetType.TypeGroup == symbols.ARR {
         switch v := val.(type) {
-        case ArrayInstance:
+        case *ArrayInstance:
             // only cast when the internal types match
             if v.Type.Equal(expr.TargetType) {
                 return v
@@ -904,4 +926,73 @@ func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionE
 
     error.Report(error.NewError(error.RNT, expr.Source().Position(), "Unable to cast %s to %s!", reflect.TypeOf(val), expr.TargetType.Name()))
     return nil
+}
+
+func (evl *Evaluator) evalMakeArrayExpression(expr *boundnodes.BoundMakeArrayExpressionNode) interface{} {
+    // This is a length defined array
+    if !expr.HasInitializer {
+        // figure out the length of the new array
+        length := evl.evalExpression(expr.Length).(int32)
+
+        // create an array object
+        arr := &ArrayInstance {
+            Type: expr.ArrType,
+            Elements: make([]interface{}, 0),
+        }
+
+        // fill the array with default values
+        for i := 0; int32(i) < length; i++ {
+            arr.Elements = append(arr.Elements, evl.getDefault(expr.ArrType.SubTypes[0]))
+        }
+
+        return arr
+
+    // This is an element defined array
+    } else {
+        // create new empty array
+        arr := &ArrayInstance {
+            Type: expr.ArrType,
+            Elements: make([]interface{}, 0),
+        }
+
+        // insert all defined elements
+        for _, v := range expr.Initializer {
+            arr.Elements = append(arr.Elements, evl.evalExpression(v))
+        }
+
+        return arr
+    }
+}
+
+func (evl *Evaluator) evalArrayIndexExpression(expr *boundnodes.BoundArrayIndexExpressionNode) interface{} {
+    // evaluate the source
+    src := evl.evalExpression(expr.SourceArray).(*ArrayInstance)
+
+    // evaluate the index
+    idx := evl.evalExpression(expr.Index).(int32)
+
+    // make sure the index isnt out of bounds
+    if idx < 0 || idx >= int32(len(src.Elements)) {     
+        error.Report(error.NewError(error.RNT, expr.Source().Position(), "Index out of bounds! (index: %d, length of array: %d)", idx, len(src.Elements)))
+        return evl.getDefault(src.Type.SubTypes[0])
+    }
+    
+    // if its not -> return the value at the index
+    return src.Elements[idx]
+}
+
+// --------------------------------------------------------
+// Helpers
+// --------------------------------------------------------
+func (evl *Evaluator) getDefault(typ *symbols.TypeSymbol) interface{} {
+    // Arrays need some special care because theyre reference types
+    if typ.TypeGroup == symbols.ARR {
+        return &ArrayInstance{
+            Type: typ,
+            Elements: make([]interface{}, 0),
+        }
+    }
+
+    // otherwise: return the predefined default
+    return typ.Default
 }

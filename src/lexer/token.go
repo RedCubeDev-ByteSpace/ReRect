@@ -85,6 +85,7 @@ const (
     TT_KW_Else                 TokenType = "TT_KW_Else"
     TT_KW_True                 TokenType = "TT_KW_True"
     TT_KW_False                TokenType = "TT_KW_False"
+    TT_KW_Make                 TokenType = "TT_KW_Make"
 
     // Identifiers
     TT_Identifier              TokenType = "TT_Identifier"
@@ -108,6 +109,7 @@ var Keywords = map[string]TokenType {
     "false":    TT_KW_False,
     "if":       TT_KW_If,
     "else":     TT_KW_Else,
+    "make":     TT_KW_Make,
 }
 
 var Symbols = map[string]TokenType {
