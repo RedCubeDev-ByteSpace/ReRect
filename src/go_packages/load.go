@@ -13,6 +13,7 @@ import (
 
 func Load() {
     // Load the sys package
+    LoadInternal()
     LoadSys()
 }
 

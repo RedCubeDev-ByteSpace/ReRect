@@ -1,4 +1,4 @@
-package evaluator
+package evalobjects
 
 import "bytespace.network/rerect/symbols"
 

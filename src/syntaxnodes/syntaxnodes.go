@@ -60,6 +60,7 @@ const (
     NT_ParenthesizedExpr SyntaxNodeType = "Parenthesized expression node"
     NT_MakeArrayExpr     SyntaxNodeType = "Array creation expression node"
     NT_ArrayIndexExpr    SyntaxNodeType = "Array index expression node"
+    NT_AccessExpr        SyntaxNodeType = "Access expression node"
 
     NT_ErrorExpr         SyntaxNodeType = "Error expression node"
 

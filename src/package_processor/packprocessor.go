@@ -77,6 +77,11 @@ func register(mem []syntaxnodes.MemberNode) *symbols.PackageSymbol {
 }
 
 func link(pck *symbols.PackageSymbol, mem []syntaxnodes.MemberNode) {
+    // always link the "internal" package
+    // -> it contains important core functions and methods like string.Length(), array.Length(), etc 
+    internal := compunit.GetPackage("internal")
+    pck.LoadedPackages["internal"] = internal
+    pck.IncludedPackages = append(pck.IncludedPackages, "internal")
 
     // search through all members
     for _, nd := range mem {

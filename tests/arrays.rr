@@ -3,27 +3,37 @@ load sys include;
 
 function main() {
     // create an int array with length 0 (by using a variable default value)
-    var emptyIntArray array[int];
+    var A array[int];
+
+    // push to A
+    A->Push(50);
+    A->Pop();
 
     // create an int array with length 1
-    var A <- make int array (1);
+    var B <- make int array (1);
 
     // assign to A
-    A[0] <- 100; 
+    B[0] <- 100; 
 
     // create an int array with the elements '3', '2', and '1'
-    var B <- make int array { 3, 2, 1 };
+    var C <- make int array { 3, 2, 1 };
 
     // ----------------------------------------------------
     // print out all elements in 'A'
     Print("A:");
-    from i <- 0 to 1 {
+    from i <- 0 to A->Length() {
         Print(" [" + string(i) + "] " + string(A[i]));
     }
 
     // print out all elements in 'B'
     Print("B:");
-    from i <- 0 to 3 {
+    from i <- 0 to B->Length() {
         Print(" [" + string(i) + "] " + string(B[i]));
+    }
+
+    // print out all elements in 'C'
+    Print("C:");
+    from i <- 0 to C->Length() {
+        Print(" [" + string(i) + "] " + string(C[i]));
     }
 }

@@ -427,6 +427,8 @@ func rewriteExpression(expr boundnodes.BoundExpressionNode) boundnodes.BoundExpr
         return rewriteMakeArrayExpression(expr.(*boundnodes.BoundMakeArrayExpressionNode))
     } else if expr.Type() == boundnodes.BT_ArrayIndexExpr {
         return rewriteArrayIndexExpression(expr.(*boundnodes.BoundArrayIndexExpressionNode))
+    } else if expr.Type() == boundnodes.BT_AccessCallExpr {
+        return rewriteAccessCallExpression(expr.(*boundnodes.BoundAccessCallExpressionNode))
     } else {
         error.Report(error.NewError(error.LWR, expr.Source().Position(), "Unable to rewrite expression '%s', no rewriter implemented! You should implement NOW!", expr.Type()))
         return expr
@@ -488,9 +490,21 @@ func rewriteMakeArrayExpression(expr *boundnodes.BoundMakeArrayExpressionNode) b
         return boundnodes.NewBoundMakeArrayExpressionNode(expr.Source(), expr.ArrType, expr.Length, initializers, expr.HasInitializer)
      }
 }
+
 func rewriteArrayIndexExpression(expr *boundnodes.BoundArrayIndexExpressionNode) boundnodes.BoundExpressionNode {
     src := rewriteExpression(expr.SourceArray)
     idx := rewriteExpression(expr.Index)
 
     return boundnodes.NewBoundArrayIndexExpressionNode(expr.Source(), src, idx)
+}
+
+func rewriteAccessCallExpression(expr *boundnodes.BoundAccessCallExpressionNode) boundnodes.BoundExpressionNode {
+    src := rewriteExpression(expr.Expression)
+    args := []boundnodes.BoundExpressionNode{}
+
+    for _, v := range expr.Arguments {
+        args = append(args, rewriteExpression(v))
+    } 
+
+    return boundnodes.NewBoundAccessCallExpressionNode(expr.Source(), src, expr.Function, args)
 }

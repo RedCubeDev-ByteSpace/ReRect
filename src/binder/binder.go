@@ -400,7 +400,8 @@ func (bin *Binder) bindExpressionStmt(stmt *syntaxnodes.ExpressionStatementNode)
     expr := bin.bindExpression(stmt.Expression)
 
     // is this expression allowed to be a statement?
-    if expr.Type() != boundnodes.BT_CallExpr && 
+    if expr.Type() != boundnodes.BT_CallExpr       && 
+       expr.Type() != boundnodes.BT_AccessCallExpr &&
        expr.Type() != boundnodes.BT_AssignmentExpr &&
        expr.Type() != boundnodes.BT_ErrorExpr {
 
@@ -464,6 +465,9 @@ func (bin *Binder) bindExpression(expr syntaxnodes.ExpressionNode) boundnodes.Bo
     
     } else if expr.Type() == syntaxnodes.NT_ArrayIndexExpr {
         return bin.bindArrayIndexExpression(expr.(*syntaxnodes.ArrayIndexExpressionNode))
+
+    } else if expr.Type() == syntaxnodes.NT_AccessExpr {
+        return bin.bindAccessExpression(expr.(*syntaxnodes.AccessExpressionNode))
 
     } else {
         error.Report(error.NewError(error.BND, expr.Position(), "Unknown expression type '%s'!", expr.Type()))
@@ -720,6 +724,40 @@ func (bin *Binder) bindArrayIndexExpression(expr *syntaxnodes.ArrayIndexExpressi
     return boundnodes.NewBoundArrayIndexExpressionNode(expr, src, idx)
 }
 
+func (bin *Binder) bindAccessExpression(expr *syntaxnodes.AccessExpressionNode) boundnodes.BoundExpressionNode {
+    // bind the source expression
+    src := bin.bindExpression(expr.Expression)
+
+    // lookup this method
+    meth := bin.LookupMethod(expr.Identifier.Buffer, src.ExprType())
+
+    // did we find something?
+    if meth == nil {
+        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Could not find method '%s' for type '%s'!", expr.Identifier.Buffer, src.ExprType().Name()))
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
+
+    // was the right amount of arguments given?
+    if len(meth.Parameters) != len(expr.Arguments) {
+        error.Report(error.NewError(error.BND, expr.Position(), "Method '%s' expects %d arguments, got: %d!", meth.FuncName, len(meth.Parameters), len(expr.Arguments)))
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
+
+    // bind all args
+    args := []boundnodes.BoundExpressionNode{}
+    for _, v := range expr.Arguments {
+        args = append(args, bin.bindExpression(v))
+    }
+
+    // make sure the datatypes match up
+    for i := range meth.Parameters {
+        args[i] = bin.bindConversion(args[i], meth.Parameters[i].VarType(), false)
+    }
+
+    // ok cool
+    return boundnodes.NewBoundAccessCallExpressionNode(expr, src, meth, args)
+}
+
 // --------------------------------------------------------
 // Utils
 // --------------------------------------------------------
@@ -798,6 +836,9 @@ func createArrayType(subtype *symbols.TypeSymbol) *symbols.TypeSymbol {
     return symbols.NewTypeSymbol(subtype.Name() + " Array", []*symbols.TypeSymbol{subtype}, symbols.ARR, 0, nil)
 }
 
+// --------------------------------------------------------
+// Function Lookup
+// --------------------------------------------------------
 func (bin *Binder) LookupFunction(name string) *symbols.FunctionSymbol {
     // look in local package first 
     fnc := LookupFunctionInPackage(bin.CurrentPackage, name)
@@ -841,8 +882,62 @@ func (bin *Binder) LookupFunctionInPackage(pack string, name string) *symbols.Fu
 
 func LookupFunctionInPackage(pck *symbols.PackageSymbol, name string) *symbols.FunctionSymbol {
     for _, v := range pck.Functions {
-        if v.FuncName == name {
+        if v.FunctionKind == symbols.FT_FUNC && v.FuncName == name {
             return v
+        }
+    }
+
+    return nil
+}
+
+// --------------------------------------------------------
+// Method Lookup
+// --------------------------------------------------------
+func (bin *Binder) LookupMethod(name string, typ *symbols.TypeSymbol) *symbols.FunctionSymbol {
+    // look in local package first 
+    fnc := LookupMethodInPackage(bin.CurrentPackage, name, typ)
+
+    if fnc != nil {
+        return fnc
+    }
+
+    // if we didnt find anything -> start looking through included packages
+    for _, pname := range bin.CurrentPackage.IncludedPackages {
+        pck := compunit.GetPackage(pname)
+
+        fnc := LookupMethodInPackage(pck, name, typ)
+        if fnc != nil {
+            return fnc
+        }
+    }
+
+    // we got nothin man
+    return nil
+}
+
+func LookupMethodInPackage(pck *symbols.PackageSymbol, name string, typ *symbols.TypeSymbol) *symbols.FunctionSymbol {
+    for _, v := range pck.Functions {
+        if v.FunctionKind == symbols.FT_METH && v.FuncName == name {
+
+            // make sure this method applies for this type
+            // -------------------------------------------
+
+            // this method applies to all types
+            if v.MethodKind == symbols.MT_ALL {
+                return v
+            }
+
+            // this method applies to all types of a group
+            if v.MethodKind == symbols.MT_GROUP && v.MethodSource.TypeGroup == typ.TypeGroup {
+                return v
+            }
+
+
+            // this method only applies to one specific type
+            if v.MethodKind == symbols.MT_STRICT && v.MethodSource.Equal(typ) {
+                return v
+            }
+
         }
     }
 

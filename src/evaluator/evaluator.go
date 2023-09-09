@@ -5,14 +5,13 @@
 package evaluator
 
 import (
-	"fmt"
 	"reflect"
-	"strconv"
 
 	"bytespace.network/rerect/boundnodes"
 	"bytespace.network/rerect/compctl"
 	"bytespace.network/rerect/compunit"
 	"bytespace.network/rerect/error"
+	evalobjects "bytespace.network/rerect/eval_objects"
 	"bytespace.network/rerect/span"
 	"bytespace.network/rerect/symbols"
 )
@@ -28,6 +27,8 @@ type StackFrame struct {
     InstPtr int
     Labels map[boundnodes.BoundLabel]int
     Locals map[symbols.VariableSymbol]interface{} 
+
+    This interface{}
 
     ReturnValue interface{}
     HasReturned bool
@@ -108,6 +109,8 @@ func Evaluate(prg *compctl.CompilationResult) {
     evl.call(main, []interface{}{})
 }
 
+// Functions
+// ---------
 func (evl *Evaluator) call(fnc *symbols.FunctionSymbol, args []interface{}) interface{} {
     // create new call stack
     evl.StackFrames = append(evl.StackFrames, &StackFrame{
@@ -132,9 +135,41 @@ func (evl *Evaluator) call(fnc *symbols.FunctionSymbol, args []interface{}) inte
 }
 
 func (evl *Evaluator) callVM(fnc *symbols.FunctionSymbol, args []interface{}) interface{} {
-   return fnc.Pointer(args) 
+   return fnc.FunctionPointer(args) 
 }
 
+// Methods
+// -------
+func (evl *Evaluator) callMethod(fnc *symbols.FunctionSymbol, instance interface{}, args []interface{}) interface{} {
+    // create new call stack
+    evl.StackFrames = append(evl.StackFrames, &StackFrame{
+        Locals: make(map[symbols.VariableSymbol]interface{}),
+        InstPtr: 0,
+        ReturnValue: nil,
+        This: instance,
+    })
+
+    // register arguments
+    for i := range fnc.Parameters {
+        evl.setVar(fnc.Parameters[i], args[i])
+    }
+
+    // run the function body
+    val := evl.run(evl.Functions[fnc])
+
+    // destroy the stack frame
+    evl.StackFrames = evl.StackFrames[:len(evl.StackFrames)-1]
+
+    // return the functions return value
+    return val
+}
+
+func (evl *Evaluator) callMethodVM(fnc *symbols.FunctionSymbol, instance interface{}, args []interface{}) interface{} {
+   return fnc.MethodPointer(instance, args) 
+}
+
+// Run any sort of function body (function or method)
+// --------------------------------------------------
 func (evl *Evaluator) run(body *boundnodes.BoundBlockStatementNode) interface{} {
     // index all labels
     lbls := make(map[boundnodes.BoundLabel]int)
@@ -282,6 +317,9 @@ func (evl *Evaluator) evalExpression(expr boundnodes.BoundExpressionNode) interf
     } else if expr.Type() == boundnodes.BT_CallExpr {
         return evl.evalCallExpression(expr.(*boundnodes.BoundCallExpressionNode))
 
+    } else if expr.Type() == boundnodes.BT_AccessCallExpr {
+        return evl.evalAccessCallExpression(expr.(*boundnodes.BoundAccessCallExpressionNode))
+
     } else if expr.Type() == boundnodes.BT_NameExpr {
         return evl.evalNameExpression(expr.(*boundnodes.BoundNameExpressionNode))
 
@@ -316,7 +354,7 @@ func (evl *Evaluator) evalAssignmentExpression(expr *boundnodes.BoundAssignmentE
         exp := expr.Expression.(*boundnodes.BoundArrayIndexExpressionNode)
 
         // get the source array
-        src := evl.evalExpression(exp.SourceArray).(*ArrayInstance)
+        src := evl.evalExpression(exp.SourceArray).(*evalobjects.ArrayInstance)
         idx := evl.evalExpression(exp.Index).(int32)
 
         // assign the value
@@ -626,6 +664,27 @@ func (evl *Evaluator) evalCallExpression(expr *boundnodes.BoundCallExpressionNod
     return evl.call(expr.Function, args)
 }
 
+func (evl *Evaluator) evalAccessCallExpression(expr *boundnodes.BoundAccessCallExpressionNode) interface{} {
+    // evaluate the call source
+    src := evl.evalExpression(expr.Expression)
+
+    // evaluate all args
+    args := []interface{}{}
+
+    for _, arg := range expr.Arguments {
+        args = append(args, evl.evalExpression(arg))
+    } 
+
+    // is this a native call?
+    if expr.Function.IsVMFunction {
+        // do a native call
+        return evl.callMethodVM(expr.Function, src, args)
+    }
+
+    // otherwise: call normally
+    return evl.callMethod(expr.Function, src, args)
+}
+
 func (evl *Evaluator) evalNameExpression(expr *boundnodes.BoundNameExpressionNode) interface{} {
     return evl.getVar(expr.Variable)
 }
@@ -633,300 +692,15 @@ func (evl *Evaluator) evalNameExpression(expr *boundnodes.BoundNameExpressionNod
 func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionExpressionNode) interface{} {
     val := evl.evalExpression(expr.Value)
 
-    // Casting anything to 'any'
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["any"]) {
-        return interface{}(val)
-    }
-
-    //fmt.Printf("Converting %s(%s) -> %s\n", expr.Value.ExprType().Name(), expr.Value.Type(), expr.TargetType.Name())
-
-    // Casting to long
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["long"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case int64:
-            return val;
-
-        case int32:
-            return int64(v)
-
-        case int16:
-            return int64(v)
-
-        case int8:
-            return int64(v)
-
-        // Cross cast
-        // ----------
-        case float64:
-            return int64(v)
-
-        case float32:
-            return int64(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseInt(v, 10, 64)
-            if err != nil {
-                panic(err)
-            }
-
-            return int64(vl)
-        }
-    }
-
-    // Casting to int
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["int"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case int64:
-            return int32(v);
-
-        case int32:
-            return v
-
-        case int16:
-            return int32(v)
-
-        case int8:
-            return int32(v)
-
-        // Cross cast
-        // ----------
-        case float64:
-            return int32(v)
-
-        case float32:
-            return int32(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseInt(v, 10, 32)
-            if err != nil {
-                panic(err)
-            }
-
-            return int32(vl)
-        }
-    }
-    
-    // Casting to word
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["word"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case int64:
-            return int16(v);
-
-        case int32:
-            return int16(v)
-
-        case int16:
-            return v
-
-        case int8:
-            return int16(v)
-
-        // Cross cast
-        // ----------
-        case float64:
-            return int16(v)
-
-        case float32:
-            return int16(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseInt(v, 10, 16)
-            if err != nil {
-                panic(err)
-            }
-
-            return int16(vl)
-        }
-    }
-    
-    // Casting to byte
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["byte"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case int64:
-            return int8(v);
-
-        case int32:
-            return int8(v)
-
-        case int16:
-            return int8(v)
-
-        case int8:
-            return v
-
-        // Cross cast
-        // ----------
-        case float64:
-            return int8(v)
-
-        case float32:
-            return int8(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseInt(v, 10, 8)
-            if err != nil {
-                panic(err)
-            }
-
-            return int8(vl)
-        }
-    }
-    
-    // Casting to double
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["double"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case float64:
-            return v
-
-        case float32:
-            return float64(v)
-
-        // Cross casts
-        // -----------
-        case int64:
-            return float64(v);
-
-        case int32:
-            return float64(v)
-
-        case int16:
-            return float64(v)
-
-        case int8:
-            return float64(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseFloat(v, 64)
-            if err != nil {
-                panic(err)
-            }
-
-            return float64(vl)
-        }
-    }
-
-    // Casting to float
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["float"]) {
-        switch v := val.(type) {
-
-        // Up / Down casts
-        // ---------------
-        case float64:
-            return float32(v)
-
-        case float32:
-            return v
-
-        // Cross casts
-        // -----------
-        case int64:
-            return float32(v);
-
-        case int32:
-            return float32(v)
-
-        case int16:
-            return float32(v)
-
-        case int8:
-            return float32(v)
-
-        // From string
-        // -----------
-        case string:
-            vl, err := strconv.ParseFloat(v, 32)
-            if err != nil {
-                panic(err)
-            }
-
-            return float32(vl)
-        }
-    }
-
-    // Casting to string
-    if expr.TargetType.Equal(compunit.GlobalDataTypeRegister["string"]) {
-        switch v := val.(type) {
-
-        // Integers
-        // --------
-        case int64:
-            return fmt.Sprintf("%d", v)
-
-        case int32:
-            return fmt.Sprintf("%d", v)
-
-        case int16:
-            return fmt.Sprintf("%d", v)
-
-        case int8:
-            return fmt.Sprintf("%d", v)
-
-        // Floats
-        // ------
-        case float64:
-            return fmt.Sprintf("%d", v)
-
-        case float32:
-            return fmt.Sprintf("%d", v)
-
-        // Booleans
-        // --------
-        case bool:
-            if v {
-                return "true"
-            } else {
-                return "false"
-            }
-
-        case *ArrayInstance:
-            return fmt.Sprintf("[%s]", v.Type.Name())
-
-        // Strings
-        // -------
-        case string:
-            return v
-        }
-    }
-
-    // Casting to array
-    if expr.TargetType.TypeGroup == symbols.ARR {
-        switch v := val.(type) {
-        case *ArrayInstance:
-            // only cast when the internal types match
-            if v.Type.Equal(expr.TargetType) {
-                return v
-            }
-        }
+    res, ok := evalobjects.EvalConversion(val, expr.TargetType)
+    if ok {
+        return res
     }
 
     error.Report(error.NewError(error.RNT, expr.Source().Position(), "Unable to cast %s to %s!", reflect.TypeOf(val), expr.TargetType.Name()))
     return nil
 }
+
 
 func (evl *Evaluator) evalMakeArrayExpression(expr *boundnodes.BoundMakeArrayExpressionNode) interface{} {
     // This is a length defined array
@@ -935,7 +709,7 @@ func (evl *Evaluator) evalMakeArrayExpression(expr *boundnodes.BoundMakeArrayExp
         length := evl.evalExpression(expr.Length).(int32)
 
         // create an array object
-        arr := &ArrayInstance {
+        arr := &evalobjects.ArrayInstance {
             Type: expr.ArrType,
             Elements: make([]interface{}, 0),
         }
@@ -950,7 +724,7 @@ func (evl *Evaluator) evalMakeArrayExpression(expr *boundnodes.BoundMakeArrayExp
     // This is an element defined array
     } else {
         // create new empty array
-        arr := &ArrayInstance {
+        arr := &evalobjects.ArrayInstance {
             Type: expr.ArrType,
             Elements: make([]interface{}, 0),
         }
@@ -966,7 +740,7 @@ func (evl *Evaluator) evalMakeArrayExpression(expr *boundnodes.BoundMakeArrayExp
 
 func (evl *Evaluator) evalArrayIndexExpression(expr *boundnodes.BoundArrayIndexExpressionNode) interface{} {
     // evaluate the source
-    src := evl.evalExpression(expr.SourceArray).(*ArrayInstance)
+    src := evl.evalExpression(expr.SourceArray).(*evalobjects.ArrayInstance)
 
     // evaluate the index
     idx := evl.evalExpression(expr.Index).(int32)
@@ -987,7 +761,7 @@ func (evl *Evaluator) evalArrayIndexExpression(expr *boundnodes.BoundArrayIndexE
 func (evl *Evaluator) getDefault(typ *symbols.TypeSymbol) interface{} {
     // Arrays need some special care because theyre reference types
     if typ.TypeGroup == symbols.ARR {
-        return &ArrayInstance{
+        return &evalobjects.ArrayInstance{
             Type: typ,
             Elements: make([]interface{}, 0),
         }

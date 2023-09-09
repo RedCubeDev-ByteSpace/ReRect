@@ -588,7 +588,8 @@ func (prs *Parser) parseBinaryExpression(lastPrecedence int) syntaxnodes.Express
         left = prs.parsePrimaryExpression()
 
         for prs.current().Type == lexer.TT_OpenBrackets ||
-            prs.current().Type == lexer.TT_LeftArrow {
+            prs.current().Type == lexer.TT_LeftArrow    ||
+            prs.current().Type == lexer.TT_RightArrow   {
 
             // Is this actually an array index?
             if prs.current().Type == lexer.TT_OpenBrackets {
@@ -598,6 +599,11 @@ func (prs *Parser) parseBinaryExpression(lastPrecedence int) syntaxnodes.Express
             // Is this actually an assignment?
             if prs.current().Type == lexer.TT_LeftArrow {
                 left = prs.parseAssignmentExpression(left)
+            }
+
+            // Is this actually an access?
+            if prs.current().Type == lexer.TT_RightArrow {
+                left = prs.parseAccessExpression(left)
             }
         }
     }
@@ -804,4 +810,36 @@ func (prs *Parser) parseArrayIndexExpression(expr syntaxnodes.ExpressionNode) *s
     prs.consume(lexer.TT_CloseBrackets)
 
     return syntaxnodes.NewArrayIndexExpressionNode(expr, idx)
+}
+
+func (prs *Parser) parseAccessExpression(expr syntaxnodes.ExpressionNode) *syntaxnodes.AccessExpressionNode {
+    // consume ->
+    prs.consume(lexer.TT_RightArrow)
+
+    // consume the field / method name
+    id := prs.consume(lexer.TT_Identifier)
+
+    // NOTE: fields arent implemented yet, all accesses are methods
+    args := []syntaxnodes.ExpressionNode{}
+    isCall := true
+
+    // consume (
+    prs.consume(lexer.TT_OpenParenthesis)
+
+    // parse the arguments
+    for prs.current().Type != lexer.TT_CloseParenthesis {
+        args = append(args, prs.parseExpression())
+
+        // consume a comma if we got one
+        if prs.current().Type == lexer.TT_Comma {
+            prs.consume(lexer.TT_Comma)
+        } else {
+            break
+        }
+    }
+
+    // consume )
+    cls := prs.consume(lexer.TT_CloseParenthesis)
+
+    return syntaxnodes.NewAccessExpressionNode(expr, id, args, cls, isCall)
 }
