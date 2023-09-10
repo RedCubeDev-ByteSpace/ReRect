@@ -93,6 +93,15 @@ func (prs *Parser) consumeWord(word string) lexer.Token {
     return id
 }
 
+// real time travel shit
+func (prs *Parser) rewind(tok lexer.Token) {
+    for prs.current().Type != tok.Type &&
+        prs.current().Position != tok.Position {
+
+        prs.step(-1)
+    }
+}
+
 // --------------------------------------------------------
 // Parsing
 // --------------------------------------------------------
@@ -198,8 +207,16 @@ func (prs *Parser) parseFunctionMember() *syntaxnodes.FunctionNode {
     // consume 'function'
     kw := prs.consume(lexer.TT_KW_Function)
 
-    // consume function name
-    id := prs.consume(lexer.TT_Identifier)
+    // consume function name OR constructor kw
+    var id lexer.Token
+    isConstructor := false
+
+    if prs.current().Type == lexer.TT_KW_Constructor {
+        id = prs.consume(lexer.TT_KW_Constructor)
+        isConstructor = true
+    } else {
+        id = prs.consume(lexer.TT_Identifier)
+    }
 
     // consume '('
     prs.consume(lexer.TT_OpenParenthesis)
@@ -236,7 +253,7 @@ func (prs *Parser) parseFunctionMember() *syntaxnodes.FunctionNode {
         body = prs.parseBlockStatement()
     }
 
-    return syntaxnodes.NewFunctionNode(kw, id, params, retType, hasReturnType, body)
+    return syntaxnodes.NewFunctionNode(kw, id, isConstructor, params, retType, hasReturnType, body)
 }
 
 func (prs *Parser) parseGlobalMember() *syntaxnodes.GlobalNode {
@@ -341,6 +358,20 @@ func (prs *Parser) parseTypeClause() *syntaxnodes.TypeClauseNode {
 
     // create new clause
     return syntaxnodes.NewTypeClauseNode(id, subtypes)
+}
+
+func (prs *Parser) parseFieldAssignmentClause() *syntaxnodes.FieldAssignmentClauseNode {
+    // consume the field name
+    id := prs.consume(lexer.TT_Identifier)
+
+    // consume the left arrow
+    prs.consume(lexer.TT_LeftArrow)
+
+    // consume the value
+    val := prs.parseExpression()
+
+    // ok cool
+    return syntaxnodes.NewFieldAssignmentClauseNode(id, val)
 }
 
 // --------------------------------------------------------
@@ -703,7 +734,7 @@ func (prs *Parser) parsePrimaryExpression() syntaxnodes.ExpressionNode {
 
     // Array creation
     } else if prs.current().Type == lexer.TT_KW_Make {
-        return prs.parseMakeArrayExpression()
+        return prs.parseMakeExpression()
 
     // Dude i have no idea
     } else {
@@ -792,6 +823,92 @@ func (prs *Parser) parseParenthesizedExpression() *syntaxnodes.ParenthesizedExpr
     return syntaxnodes.NewParenthesizedExpressionNode(start, expr, end)
 }
 
+func (prs *Parser) parseMakeExpression() syntaxnodes.ExpressionNode {
+    // consume the make kw
+    kw := prs.consume(lexer.TT_KW_Make)
+
+    // consume a package name if there is one
+    var pack lexer.Token
+    hasPack := false
+
+    // if theres a :: token
+    if prs.peek(1).Type == lexer.TT_Package {
+        pack = prs.consume(lexer.TT_Identifier)
+        prs.consume(lexer.TT_Package)
+        hasPack = true
+    }
+
+    // consume the container name
+    id := prs.consume(lexer.TT_Identifier)
+    closing := id
+
+    // is this next token an identifier?
+    if prs.current().Type == lexer.TT_Identifier {
+        if prs.current().Buffer == "array" {
+            // aw man we fucked up
+            // this is actually an array creation
+
+            // use time travel to fix this
+            prs.rewind(kw)
+            return prs.parseMakeArrayExpression()
+        }
+    }
+
+    // parse the initializer / constructor / nothing
+    initializer := []*syntaxnodes.FieldAssignmentClauseNode{}
+    hasInitializer := false
+
+    args := []syntaxnodes.ExpressionNode{}
+    hasConstructor := false
+
+    // Constructor creation
+    // make <container> (<args>);
+    if prs.current().Type == lexer.TT_OpenParenthesis {
+        prs.consume(lexer.TT_OpenParenthesis)
+
+        // parse some args, yo
+        for prs.current().Type != lexer.TT_CloseParenthesis {
+            args = append(args, prs.parseExpression())
+
+            // consume a comma, if there is one
+            if prs.current().Type == lexer.TT_Comma {
+                prs.consume(lexer.TT_Comma)
+
+            // if theres none, we're probably done
+            } else {
+                break
+            }
+        }
+
+        closing = prs.consume(lexer.TT_CloseParenthesis)
+        hasConstructor = true
+
+    // Initializer creation
+    // make <container> { <fld> <- <val> }
+    } else if prs.current().Type == lexer.TT_OpenBraces {
+        prs.consume(lexer.TT_OpenBraces)
+
+        // parse some field assignments, yo
+        for prs.current().Type != lexer.TT_CloseBraces {
+            initializer = append(initializer, prs.parseFieldAssignmentClause())
+
+            // consume a comma, if there is one
+            if prs.current().Type == lexer.TT_Comma {
+                prs.consume(lexer.TT_Comma)
+
+            // if theres none, we're probably done
+            } else {
+                break
+            }
+        } 
+
+        closing = prs.consume(lexer.TT_CloseBraces)
+        hasInitializer = true
+    } 
+
+    return syntaxnodes.NewMakeExpressionNode(kw, closing, id, pack, hasPack, initializer, hasInitializer, args, hasConstructor)
+}
+
 func (prs *Parser) parseMakeArrayExpression() *syntaxnodes.MakeArrayExpressionNode {
     // consume the make kw
     kw := prs.consume(lexer.TT_KW_Make)
@@ -866,28 +983,33 @@ func (prs *Parser) parseAccessExpression(expr syntaxnodes.ExpressionNode) *synta
 
     // consume the field / method name
     id := prs.consume(lexer.TT_Identifier)
+    cls := id
 
-    // NOTE: fields arent implemented yet, all accesses are methods
+    // if this is a call -> parse some args
     args := []syntaxnodes.ExpressionNode{}
-    isCall := true
+    isCall := false
 
-    // consume (
-    prs.consume(lexer.TT_OpenParenthesis)
+    if prs.current().Type == lexer.TT_OpenParenthesis {
+        // consume (
+        prs.consume(lexer.TT_OpenParenthesis)
 
-    // parse the arguments
-    for prs.current().Type != lexer.TT_CloseParenthesis {
-        args = append(args, prs.parseExpression())
+        // parse the arguments
+        for prs.current().Type != lexer.TT_CloseParenthesis {
+            args = append(args, prs.parseExpression())
 
-        // consume a comma if we got one
-        if prs.current().Type == lexer.TT_Comma {
-            prs.consume(lexer.TT_Comma)
-        } else {
-            break
+            // consume a comma if we got one
+            if prs.current().Type == lexer.TT_Comma {
+                prs.consume(lexer.TT_Comma)
+            } else {
+                break
+            }
         }
+
+        // consume )
+        cls = prs.consume(lexer.TT_CloseParenthesis)
+        isCall = true
     }
 
-    // consume )
-    cls := prs.consume(lexer.TT_CloseParenthesis)
 
     return syntaxnodes.NewAccessExpressionNode(expr, id, args, cls, isCall)
 }

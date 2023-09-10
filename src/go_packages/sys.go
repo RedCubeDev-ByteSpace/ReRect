@@ -117,3 +117,6 @@ func Char(args []any) any {
     // do the thing
     return string(rune(ascii))
 }
+
+// sys::die(exitcode int) 
+

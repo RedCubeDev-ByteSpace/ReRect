@@ -6,6 +6,7 @@ package error
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"bytespace.network/rerect/compunit"
@@ -29,6 +30,12 @@ var errors []Error
 // ------------------------------
 func Report(err Error) {
     errors = append(errors, err)
+
+    // if error occoured in runtime -> this is bad :)
+    if err.Unit == RNT {
+        Output()
+        os.Exit(-1)
+    }
 } 
 
 // Output all reported errors

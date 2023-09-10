@@ -40,6 +40,21 @@ type StackFrame struct {
 func (evl *Evaluator) setVar(vari symbols.VariableSymbol, val interface{}) {
     if vari.Type() == symbols.ST_Global {
         evl.Globals[vari] = val
+    } else if vari.Type() == symbols.ST_Field {
+        // safety for when i mess something up lol
+        if evl.stackFrame().This == nil {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime field lookup :) (no instance in assign)"))
+            return
+        }
+
+        evl.stackFrame().This.(*evalobjects.ContainerInstance).Fields[vari.Name()] = val
+    } else if vari.Type() == symbols.ST_Instance {
+        // do absolutely nothing
+
+        // sike
+        error.Report(error.NewError(error.RNT, span.Internal(), "Instance variables are read only!"))
+        return
+
     } else {
         evl.stackFrame().Locals[vari] = val
     }
@@ -56,6 +71,25 @@ func (evl *Evaluator) getVar(vari symbols.VariableSymbol) interface{} {
         }
 
         return val
+    } else if vari.Type() == symbols.ST_Field {
+
+        if evl.stackFrame().This == nil {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime field lookup :) (no instance)"))
+            return nil
+        }
+
+        val, ok := evl.stackFrame().This.(*evalobjects.ContainerInstance).Fields[vari.Name()]
+
+        if !ok {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Someone fucked up the runtime field lookup :)"))
+            return nil
+        }
+
+        return val
+
+    } else if vari.Type() == symbols.ST_Instance {
+        return evl.stackFrame().This
+
     } else {
 
         val, ok := evl.stackFrame().Locals[vari]
@@ -332,6 +366,12 @@ func (evl *Evaluator) evalExpression(expr boundnodes.BoundExpressionNode) interf
     } else if expr.Type() == boundnodes.BT_ArrayIndexExpr {
         return evl.evalArrayIndexExpression(expr.(*boundnodes.BoundArrayIndexExpressionNode))
 
+    } else if expr.Type() == boundnodes.BT_MakeExpr {
+        return evl.evalMakeExpression(expr.(*boundnodes.BoundMakeExpressionNode))
+
+    } else if expr.Type() == boundnodes.BT_AccessFieldExpr {
+        return evl.evalAccessFieldExpression(expr.(*boundnodes.BoundAccessFieldExpressionNode))
+
     } else {
         error.Report(error.NewError(error.RNT, expr.Source().Position(), "Expression evaluation not implemented! You should implement NOW! (%s)", expr.Type()))
         return nil
@@ -359,6 +399,22 @@ func (evl *Evaluator) evalAssignmentExpression(expr *boundnodes.BoundAssignmentE
 
         // assign the value
         src.Elements[idx] = val
+
+    // container field assignment
+    } else if expr.Expression.Type() == boundnodes.BT_AccessFieldExpr {
+        exp := expr.Expression.(*boundnodes.BoundAccessFieldExpressionNode)
+
+        // evaluate the source
+        src := evl.evalExpression(exp.Expression)
+
+        // if this is null -> we're doomed
+        if src == nil {
+            error.Report(error.NewError(error.RNT, expr.Source().Position(), "Cannot assign field on null! (I am literally calling the police rn)"))
+            return nil
+        }
+
+        // assign to the field
+        src.(*evalobjects.ContainerInstance).Fields[exp.Field.FieldName] = val
     }
 
     return val
@@ -759,6 +815,58 @@ func (evl *Evaluator) evalArrayIndexExpression(expr *boundnodes.BoundArrayIndexE
     
     // if its not -> return the value at the index
     return src.Elements[idx]
+}
+
+func (evl *Evaluator) evalMakeExpression(expr *boundnodes.BoundMakeExpressionNode) interface{} {
+    // create an instance
+    instance := &evalobjects.ContainerInstance {
+        Type: expr.Container.ContainerType,
+        Fields: make(map[string]interface{}),
+    }
+
+    // create all fields
+    for _, v := range expr.Container.Fields {
+        instance.Fields[v.FieldName] = evl.getDefault(v.FieldType)
+    }
+
+    // are we calling a constructor?
+    if expr.HasConstructor {
+        // evaluate all args
+        args := []interface{}{}
+        for _, v := range expr.Arguments {
+            args = append(args, evl.evalExpression(v))
+        }
+
+        if expr.Container.Constructor.IsVMFunction {
+            evl.callMethodVM(expr.Container.Constructor, instance, args)
+        } else {
+            evl.callMethod(expr.Container.Constructor, instance, args)
+        }
+    }
+
+    // are we initializing fields ourselves like a caveman?
+    if expr.HasInitializer {
+        for k, v := range expr.Initializer {
+            val := evl.evalExpression(v)
+            instance.Fields[k.FieldName] = val
+        }
+    }
+
+    return instance
+}
+
+func (evl *Evaluator) evalAccessFieldExpression(expr *boundnodes.BoundAccessFieldExpressionNode) interface{} {
+    // evaluate the source
+    src := evl.evalExpression(expr.Expression)
+
+    // if this is null -> we're doomed
+    if src == nil {
+        error.Report(error.NewError(error.RNT, expr.Source().Position(), "Cannot access field on null! (I am literally calling the police rn)"))
+        return nil
+    }
+
+    // otherwise -> return the value
+    return src.(*evalobjects.ContainerInstance).Fields[expr.Field.FieldName]
 }
 
 // --------------------------------------------------------

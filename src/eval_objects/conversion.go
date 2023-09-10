@@ -242,6 +242,22 @@ func EvalConversion(val interface{}, to *symbols.TypeSymbol) (interface{}, bool)
         }
     }
 
+    // Casting to bool
+    if to.Equal(compunit.GlobalDataTypeRegister["bool"]) {
+        switch v := val.(type) {
+        case bool:
+            return v, true
+
+        case string:
+            vl, err := strconv.ParseBool(v)
+            if err != nil {
+                panic(err)
+            }
+
+            return vl, true
+        }
+    }
+
     // Casting to string
     if to.Equal(compunit.GlobalDataTypeRegister["string"]) {
         switch v := val.(type) {

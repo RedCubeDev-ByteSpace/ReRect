@@ -68,6 +68,8 @@ const (
     BT_MakeArrayExpr   BoundNodeType = "Array creation expression"
     BT_ArrayIndexExpr  BoundNodeType = "Array index expression"
     BT_AccessCallExpr  BoundNodeType = "Access call expression"
+    BT_MakeExpr        BoundNodeType = "Object creation expression"
+    BT_AccessFieldExpr BoundNodeType = "Access field expression"
 
     BT_ErrorExpr       BoundNodeType = "Error expression"
 )

@@ -3,16 +3,43 @@ load sys include;
 
 function main() {
     // mmm yes, container
-    var a ExtendedByte;
+    var a <- make ExtendedByte {
+        Num <- byte(100),
+    };
+
+    // method calling
     a->CoolMethod();
+
+    // assignment
+    a->Num <- byte(100);
+
+    // access
+    Print("Number: " + string(a->Num));
+
+    // recursive calls
+    a->Bits->Push(false);
+    Print("Length of 'Bits': " + string(a->Bits->Length()));
+
+    // lets try the constructor
+    var instance <- make ExtendedByte(byte(10));
+    instance->Print();
 }
 
 container ExtendedByte {
     Num  byte;
     Bits array[bool];
 
+    function Constructor(num byte) {
+        Num <- num;
+        this->Bits <- make bool array(8);
+    }
 
     function CoolMethod() {
-        Print(string(Num));
+        sys::Print(string(Num));
+    }
+
+    function Print() {
+        sys::Print("Num: " + string(Num));
+        sys::Print("Length 'Bits': " + string(Bits->Length()));
     }
 }

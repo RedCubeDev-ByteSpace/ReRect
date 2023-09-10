@@ -1,6 +1,7 @@
 package gopackages
 
 import (
+	"os"
 	"reflect"
 
 	"bytespace.network/rerect/compunit"
@@ -10,7 +11,7 @@ import (
 	"bytespace.network/rerect/symbols"
 )
 
-// Some very cool global functions
+// Some very cool internal functions
 func LoadInternal() {
     pack := registerPackage("internal")
     
@@ -24,6 +25,9 @@ func LoadInternal() {
 
     // String methods
     registerFunction("internal", symbols.NewVMMethodSymbol(pack, symbols.MT_STRICT, compunit.GlobalDataTypeRegister["string"], "Length", compunit.GlobalDataTypeRegister["int"], []*symbols.ParameterSymbol{}, String_Length))
+
+    // Global functions
+    registerFunction("internal", symbols.NewVMFunctionSymbol(pack, "die", compunit.GlobalDataTypeRegister["void"], []*symbols.ParameterSymbol{symbols.NewParameterSymbol("exitcode", 0, compunit.GlobalDataTypeRegister["int"])}, Die))
 }
 
 func String_Length(instance any, args []any) any {
@@ -60,7 +64,12 @@ func Array_Push(instance any, args []any) any {
     elem, ok := evalobjects.EvalConversion(elem, arr.Type.SubTypes[0])
     
     if !ok {
-        error.Report(error.NewError(error.RNT, span.Internal(), "Cannot Push() element of type '%s' into array of type '%s'!", reflect.TypeOf(elem).Name(), arr.Type.SubTypes[0].Name()))
+        typ := "any"
+        if elem != nil {
+            typ = reflect.TypeOf(elem).Name()
+        }
+
+        error.Report(error.NewError(error.RNT, span.Internal(), "Cannot Push() element of type '%s' into array of type '%s'!", typ, arr.Type.SubTypes[0].Name()))
         return nil
     }
 
@@ -84,4 +93,13 @@ func Array_Pop(instance any, args []any) any {
     arr.Elements = arr.Elements[:len(arr.Elements)-1]
 
     return elem
+}
+
+// die(exitcode int)
+func Die(args []any) any {
+    // get the exit code
+    code := args[0].(int32)
+    os.Exit(int(code))
+
+    return nil
 }

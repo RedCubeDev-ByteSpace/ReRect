@@ -10,6 +10,7 @@ type FunctionNode struct {
 
     FunctionKw lexer.Token
     FunctionName lexer.Token
+    IsConstructor bool
 
     Parameters []*ParameterClauseNode 
 
@@ -19,10 +20,11 @@ type FunctionNode struct {
     Body StatementNode
 }
 
-func NewFunctionNode(fnckw lexer.Token, fncname lexer.Token, prm []*ParameterClauseNode, rettype *TypeClauseNode, hasrettype bool, body StatementNode) *FunctionNode {
+func NewFunctionNode(fnckw lexer.Token, fncname lexer.Token, iscst bool, prm []*ParameterClauseNode, rettype *TypeClauseNode, hasrettype bool, body StatementNode) *FunctionNode {
     return &FunctionNode{
         FunctionKw: fnckw,
         FunctionName: fncname,
+        IsConstructor: iscst,
         Parameters: prm,
         ReturnType: rettype,
         HasReturnType: hasrettype,

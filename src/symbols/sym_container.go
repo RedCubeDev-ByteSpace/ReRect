@@ -10,6 +10,8 @@ type ContainerSymbol struct {
     ContainerName string
     ContainerType *TypeSymbol
 
+    Constructor *FunctionSymbol
+
     Symbols []string
     Fields []*FieldSymbol
 }

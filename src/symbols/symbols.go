@@ -20,4 +20,5 @@ const (
     ST_Type      SymbolType = "Type symbol"
     ST_Container SymbolType = "Container symbol"
     ST_Field     SymbolType = "Field symbol"
+    ST_Instance  SymbolType = "Instance symbol"
 )

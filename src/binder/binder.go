@@ -57,6 +57,7 @@ func IndexContainerTypes(file *packageprocessor.CompilationFile) {
 
 func IndexContainerContents(file *packageprocessor.CompilationFile) {
     fields := []*symbols.FieldSymbol{}
+    hasConstructor := false
 
     // work through all containers
     for _, cnt := range file.Containers {
@@ -84,6 +85,13 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
 
         // bind all meths (methods, of course)
         for _, fncMem := range src.Methods {
+
+            if fncMem.IsConstructor && hasConstructor {
+                error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Only one constructor per container is allowed!"))
+                continue
+            }
+
+            hasConstructor = true
 
             // create parameter symbols
             prms := []*symbols.ParameterSymbol{}
@@ -119,6 +127,11 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
 
             // also register the name in this container
             cnt.Symbols = append(cnt.Symbols, fnc.FuncName)
+
+            // if its a constructor -> also register it in the container symbol
+            if fncMem.IsConstructor {
+                cnt.Constructor = fnc
+            }
         }
 
         // store the container contents in the container
@@ -138,6 +151,13 @@ func IndexFunctions(file *packageprocessor.CompilationFile) {
         }
 
         fncMem := v.(*syntaxnodes.FunctionNode)
+
+        // is this a constructor?
+        if fncMem.IsConstructor {
+            // cringe
+            error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Illegal constructor outside of a container!"))
+            continue
+        }
 
         // create parameter symbols
         prms := []*symbols.ParameterSymbol{}
@@ -249,7 +269,11 @@ func BindFunctions(file *packageprocessor.CompilationFile) {
                 for _, v := range bin.CurrentType.Container.Fields {
                     bin.CurrentScope.RegisterVariable(v)
                 } 
+
+                // and register an instance variable ("this")
+                bin.CurrentScope.RegisterVariable(symbols.NewInstanceSymbol(bin.CurrentType))
             }
+
         }
 
         // register the package globals as variables
@@ -589,6 +613,9 @@ func (bin *Binder) bindExpression(expr syntaxnodes.ExpressionNode) boundnodes.Bo
     } else if expr.Type() == syntaxnodes.NT_AccessExpr {
         return bin.bindAccessExpression(expr.(*syntaxnodes.AccessExpressionNode))
 
+    } else if expr.Type() == syntaxnodes.NT_MakeExpr {
+        return bin.bindMakeExpression(expr.(*syntaxnodes.MakeExpressionNode))
+
     } else {
         error.Report(error.NewError(error.BND, expr.Position(), "Unknown expression type '%s'!", expr.Type()))
         return boundnodes.NewBoundErrorExpressionNode(expr)
@@ -660,8 +687,9 @@ func (bin *Binder) bindAssignmentExpression(expr *syntaxnodes.AssignmentExpressi
     exp := bin.bindExpression(expr.Expression)
 
     // make sure we're allowed to assign to this type of expression
-    if exp.Type() != boundnodes.BT_NameExpr &&
-       exp.Type() != boundnodes.BT_ArrayIndexExpr {
+    if exp.Type() != boundnodes.BT_NameExpr       &&
+       exp.Type() != boundnodes.BT_ArrayIndexExpr &&
+       exp.Type() != boundnodes.BT_AccessFieldExpr {
 
         error.Report(error.NewError(error.BND, expr.Position(), "Cannot assign to expression of type '%s'!", expr.Expression.Type()))
         return boundnodes.NewBoundErrorExpressionNode(expr)
@@ -845,6 +873,27 @@ func (bin *Binder) bindArrayIndexExpression(expr *syntaxnodes.ArrayIndexExpressi
 }
 
 func (bin *Binder) bindAccessExpression(expr *syntaxnodes.AccessExpressionNode) boundnodes.BoundExpressionNode {
+    if expr.IsCall {
+        return bin.bindAccessCallExpression(expr)
+    }
+
+    // bind the source expression
+    src := bin.bindExpression(expr.Expression)
+
+    // damn but like, is this even a container?
+    if src.ExprType().TypeGroup != symbols.CONT {
+        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Unable to access a field on non container type '%s'!", src.ExprType().Name()))
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
+
+    // look up the field
+    fld := LookupFieldInContainer(expr.Identifier.Buffer, src.ExprType().Container) 
+
+    // ok cool
+    return boundnodes.NewBoundAccessFieldExpressionNode(expr, src, fld)
+}
+
+func (bin *Binder) bindAccessCallExpression(expr *syntaxnodes.AccessExpressionNode) boundnodes.BoundExpressionNode {
     // bind the source expression
     src := bin.bindExpression(expr.Expression)
 
@@ -876,6 +925,62 @@ func (bin *Binder) bindAccessExpression(expr *syntaxnodes.AccessExpressionNode) 
 
     // ok cool
     return boundnodes.NewBoundAccessCallExpressionNode(expr, src, meth, args)
+}
+
+func (bin *Binder) bindMakeExpression(expr *syntaxnodes.MakeExpressionNode) boundnodes.BoundExpressionNode {
+    // look up the container we'll be instantiating
+    var cnt *symbols.ContainerSymbol
+
+    // if a package was given the lookup needs to be slightly different
+    if expr.HasPackage {
+        cnt = bin.LookupContainerInPackage(expr.Package.Buffer, expr.Container.Buffer)
+
+    // otherwise, just do a normal lookup
+    } else {
+        cnt = LookupContainer(expr.Container.Buffer, bin.CurrentPackage)
+    }
+
+    initializer := make(map[*symbols.FieldSymbol]boundnodes.BoundExpressionNode)
+    args := []boundnodes.BoundExpressionNode{}
+
+    // bind the initializer, if it exists
+    if expr.HasInitializer {
+        for _, v := range expr.Initializer {
+            field := LookupFieldInContainer(v.FieldName.Buffer, cnt)
+            val := bin.bindExpression(v.Value)
+
+            // make sure the types match up
+            val = bin.bindConversion(val, field.VarType(), false)
+
+            // add it to the list
+            initializer[field] = val
+        }
+    }
+
+    // bind the constructor, if it exists
+    if expr.HasConstructor {
+        // does the container even have a constructor??
+        if cnt.Constructor == nil {
+            error.Report(error.NewError(error.BND, expr.Position(), "Unable to call constructor: container '%s' does not have a constructor!", cnt.Name()))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        }
+
+        // otherwise -> make sure the call is correct
+        if len(cnt.Constructor.Parameters) != len(expr.ConstructorArguments) {
+            error.Report(error.NewError(error.BND, expr.Position(), "Unable to call constructor: constructor for container '%s' expects %d arguments, got %d!", cnt.Name(), len(cnt.Constructor.Parameters), len(expr.ConstructorArguments)))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        }
+
+        // bind all args, make sure the types match up
+        for i, v := range expr.ConstructorArguments {
+            val := bin.bindExpression(v)
+            val = bin.bindConversion(val, cnt.Constructor.Parameters[i].VarType(), false)
+            args = append(args, val)
+        }
+    }
+
+    // create the node
+    return boundnodes.NewBoundMakeExpressionNode(expr, cnt, initializer, expr.HasInitializer, args, expr.HasConstructor)
 }
 
 // --------------------------------------------------------
@@ -967,6 +1072,16 @@ func createArrayType(subtype *symbols.TypeSymbol) *symbols.TypeSymbol {
 // --------------------------------------------------------
 // Container Lookup
 // --------------------------------------------------------
+func (bin *Binder) LookupContainerInPackage(pck string, cnt string) *symbols.ContainerSymbol {
+    pack := bin.LookupPackage(pck)
+
+    if pack == nil {
+        return nil
+    }
+
+    return LookupContainerInPackage(cnt, pack)
+}
+
 func LookupContainer(name string, pck *symbols.PackageSymbol) *symbols.ContainerSymbol {
     cnt := LookupContainerInPackage(name, pck)
     if cnt != nil {
@@ -992,6 +1107,33 @@ func LookupContainerInPackage(name string, pack *symbols.PackageSymbol) *symbols
         }
     }
 
+    return nil
+}
+
+// --------------------------------------------------------
+// Field lookup
+// --------------------------------------------------------
+func LookupFieldInContainer(name string, cnt *symbols.ContainerSymbol) *symbols.FieldSymbol {
+    for _, v := range cnt.Fields {
+        if v.FieldName == name {
+            return v
+        }
+    }
+
+    return nil
+}
+
+// --------------------------------------------------------
+// Package lookup
+// --------------------------------------------------------
+func (bin *Binder) LookupPackage(name string) *symbols.PackageSymbol {
+    // look the package up
+    for _, p := range bin.CurrentPackage.LoadedPackages {
+        if p.Name() == name {
+            return p
+        }
+    }
+    
     return nil
 }
 
@@ -1029,15 +1171,7 @@ func (bin *Binder) LookupFunction(name string) *symbols.FunctionSymbol {
 }
 
 func (bin *Binder) LookupFunctionInPackage(pack string, name string) *symbols.FunctionSymbol {
-    var pck *symbols.PackageSymbol = nil
-
-    // look the package up
-    for _, p := range bin.CurrentPackage.LoadedPackages {
-        if p.Name() == pack {
-            pck = p
-            break
-        }
-    }
+    pck := bin.LookupPackage(pack)
 
     // did we find something?
     if pck == nil {
