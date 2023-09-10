@@ -12,15 +12,17 @@ type ContainerNode struct {
     ContainerName lexer.Token
 
     Fields []*FieldClauseNode
+    Methods []*FunctionNode
 
     Closing lexer.Token
 }
 
-func NewContainerNode(kw lexer.Token, name lexer.Token, fields []*FieldClauseNode, cls lexer.Token) *ContainerNode {
+func NewContainerNode(kw lexer.Token, name lexer.Token, fields []*FieldClauseNode, meth []*FunctionNode, cls lexer.Token) *ContainerNode {
     return &ContainerNode{
         ContainerKw: kw,
         ContainerName: name,
         Fields: fields,
+        Methods: meth,
         Closing: cls,
     }
 }

@@ -11,6 +11,8 @@ type TypeSymbol struct {
     TypeGroup TypeGroupType
     TypeSize int
 
+    Container *ContainerSymbol
+
     Default interface{}
 }
 

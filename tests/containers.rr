@@ -4,9 +4,15 @@ load sys include;
 function main() {
     // mmm yes, container
     var a ExtendedByte;
+    a->CoolMethod();
 }
 
 container ExtendedByte {
     Num  byte;
     Bits array[bool];
+
+
+    function CoolMethod() {
+        Print(string(Num));
+    }
 }

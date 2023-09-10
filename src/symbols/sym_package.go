@@ -49,7 +49,7 @@ func (sym *PackageSymbol) TryRegisterContainer(cnt *ContainerSymbol) bool {
 
 func (sym *PackageSymbol) TryRegisterFunction(fnc *FunctionSymbol) bool {
     // check if a symbol with this name already exists
-    if slices.Contains(sym.SymbolNames, fnc.Name()) {
+    if fnc.FunctionKind == FT_FUNC && slices.Contains(sym.SymbolNames, fnc.Name()) {
         return false
     }
 

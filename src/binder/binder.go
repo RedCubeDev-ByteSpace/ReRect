@@ -39,6 +39,10 @@ func IndexContainerTypes(file *packageprocessor.CompilationFile) {
         // register a container symbol for this container 
         cnt := symbols.NewContainerSymbol(file.Package, cntMem.ContainerName.Buffer, typ)
 
+        // link the type symbol to the container
+        typ.Container = cnt
+
+        // register the type in the package
         ok := file.Package.TryRegisterContainer(cnt) 
 
         if !ok {
@@ -53,7 +57,6 @@ func IndexContainerTypes(file *packageprocessor.CompilationFile) {
 
 func IndexContainerContents(file *packageprocessor.CompilationFile) {
     fields := []*symbols.FieldSymbol{}
-    cntSymbols := []string{}
 
     // work through all containers
     for _, cnt := range file.Containers {
@@ -65,7 +68,7 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
             typ := LookupTypeClause(v.FieldType, file.Package)
 
             // WAIT A MINUTE, DID WE HAVE A FIELD WITH THIS NAME ALREADY???
-            if slices.Contains(cntSymbols, v.FieldName.Buffer) {
+            if slices.Contains(cnt.Symbols, v.FieldName.Buffer) {
                 // jes -> DIE!!!! >:)
                 error.Report(error.NewError(error.BND, v.Position(), "Cannot register field '%s'! A symbol with that name already exists!", v.FieldName.Buffer))
                 continue
@@ -76,7 +79,46 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
 
             // add it to the list
             fields = append(fields, sym)
-            cntSymbols = append(cntSymbols, sym.FieldName)
+            cnt.Symbols = append(cnt.Symbols, sym.FieldName)
+        }
+
+        // bind all meths (methods, of course)
+        for _, fncMem := range src.Methods {
+
+            // create parameter symbols
+            prms := []*symbols.ParameterSymbol{}
+            for i, prm := range fncMem.Parameters {
+                prms = append(prms, symbols.NewParameterSymbol(
+                    prm.ParameterName.Buffer,
+                    i,
+                    LookupTypeClause(prm.ParameterType, file.Package),
+                ))
+            }
+
+            // register a function symbol for this method
+            fnc := symbols.NewMethodSymbol(
+                file.Package,
+                cnt.ContainerType,
+                fncMem.FunctionName.Buffer,
+                LookupTypeClause(fncMem.ReturnType, file.Package),
+                prms,
+            )
+
+            // okay but like, is this legal?
+            if slices.Contains(cnt.Symbols, fnc.Name()) {
+                error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Cannot register method '%s'! A symbol with that name already exists!", fnc.Name()))
+                continue
+            }
+
+            // if it is -> register it globally in this package
+            file.Package.TryRegisterFunction(fnc) 
+
+            // register method as a global function (because im lazy and they are treated equal anyways :) ) 
+            file.Functions = append(file.Functions, fnc)
+            file.FunctionBodiesSrc[fnc] = fncMem.Body
+
+            // also register the name in this container
+            cnt.Symbols = append(cnt.Symbols, fnc.FuncName)
         }
 
         // store the container contents in the container
@@ -158,6 +200,7 @@ func IndexGlobals(file *packageprocessor.CompilationFile) {
 // --------------------------------------------------------
 type Binder struct {
     CurrentPackage *symbols.PackageSymbol
+    CurrentType *symbols.TypeSymbol
     CurrentFunction *symbols.FunctionSymbol
     CurrentScope *Scope
 
@@ -195,6 +238,18 @@ func BindFunctions(file *packageprocessor.CompilationFile) {
             CurrentPackage: file.Package,
             CurrentFunction: sym,
             CurrentScope: NewScope(nil),
+        }
+
+        // if this is a method -> register the current type
+        if sym.FunctionKind == symbols.FT_METH {
+            bin.CurrentType = sym.MethodSource
+
+            // also register all fields as variables
+            if bin.CurrentType.TypeGroup == symbols.CONT {
+                for _, v := range bin.CurrentType.Container.Fields {
+                    bin.CurrentScope.RegisterVariable(v)
+                } 
+            }
         }
 
         // register the package globals as variables
@@ -944,6 +999,14 @@ func LookupContainerInPackage(name string, pack *symbols.PackageSymbol) *symbols
 // Function Lookup
 // --------------------------------------------------------
 func (bin *Binder) LookupFunction(name string) *symbols.FunctionSymbol {
+    // if we're currently in a type -> look up methods first
+    if bin.CurrentType != nil {
+        meth := bin.LookupMethod(name, bin.CurrentType)
+        if meth != nil {
+            return meth
+        }
+    }
+
     // look in local package first 
     fnc := LookupFunctionInPackage(bin.CurrentPackage, name)
 

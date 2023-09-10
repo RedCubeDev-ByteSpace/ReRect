@@ -10,6 +10,7 @@ type ContainerSymbol struct {
     ContainerName string
     ContainerType *TypeSymbol
 
+    Symbols []string
     Fields []*FieldSymbol
 }
 
@@ -21,6 +22,9 @@ func NewContainerSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *Conta
 
         // Fields will be filled in later
         Fields: make([]*FieldSymbol, 0),
+
+        // same here
+        Symbols: make([]string, 0),
     }
 }
 

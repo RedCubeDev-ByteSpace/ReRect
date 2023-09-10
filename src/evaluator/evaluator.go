@@ -668,6 +668,12 @@ func (evl *Evaluator) evalAccessCallExpression(expr *boundnodes.BoundAccessCallE
     // evaluate the call source
     src := evl.evalExpression(expr.Expression)
 
+    // if this is null -> we're doomed
+    if src == nil {
+        error.Report(error.NewError(error.RNT, expr.Source().Position(), "Cannot call method on null! (I am literally calling the police rn)"))
+        return nil
+    }
+
     // evaluate all args
     args := []interface{}{}
 

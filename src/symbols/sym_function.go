@@ -37,6 +37,22 @@ func NewFunctionSymbol(pck *PackageSymbol, name string, typ *TypeSymbol, params 
     }
 }
 
+func NewMethodSymbol(pck *PackageSymbol, src *TypeSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol) *FunctionSymbol {
+    return &FunctionSymbol{
+        FunctionKind: FT_METH,
+        MethodKind: MT_STRICT,
+        MethodSource: src,
+
+        ParentPackage: pck,
+
+        FuncName: name,
+        ReturnType: typ,
+        Parameters: params,
+
+        IsVMFunction: false,
+    }
+}
+
 func NewVMFunctionSymbol(pck *PackageSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol, ptr VMFPtr) *FunctionSymbol {
     return &FunctionSymbol{
         FunctionKind: FT_FUNC,

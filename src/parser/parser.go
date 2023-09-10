@@ -263,18 +263,26 @@ func (prs *Parser) parseContainerMember() *syntaxnodes.ContainerNode {
     // consume '{'
     prs.consume(lexer.TT_OpenBraces)
 
-    // consume as many fields as we can
+    // consume as many members as we can
     fields := []*syntaxnodes.FieldClauseNode{}
+    methods := []*syntaxnodes.FunctionNode{}
     for prs.current().Type != lexer.TT_CloseBraces && 
         prs.current().Type != lexer.TT_EOF {
         
-        fields = append(fields, prs.parseFieldClause())
+        // is this a method?
+        if prs.current().Type == lexer.TT_KW_Function {
+            methods = append(methods, prs.parseFunctionMember())
+
+        // if not -> probably a field lol
+        } else {
+            fields = append(fields, prs.parseFieldClause())
+        }
     }
 
     // consume '}'
     cls := prs.consume(lexer.TT_CloseBraces)
 
-    return syntaxnodes.NewContainerNode(kw, id, fields, cls)
+    return syntaxnodes.NewContainerNode(kw, id, fields, methods, cls)
 }
 
 // --------------------------------------------------------
