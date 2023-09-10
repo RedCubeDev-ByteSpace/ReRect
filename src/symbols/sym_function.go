@@ -3,7 +3,7 @@ package symbols
 // Function variable symbol
 // ---------------------
 type FunctionSymbol struct {
-    VariableSymbol
+    Symbol
 
     FunctionKind FunctionType
     MethodKind MethodType

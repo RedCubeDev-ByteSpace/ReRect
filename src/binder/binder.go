@@ -7,6 +7,7 @@ package binder
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"bytespace.network/rerect/boundnodes"
@@ -18,6 +19,70 @@ import (
 	"bytespace.network/rerect/symbols"
 	"bytespace.network/rerect/syntaxnodes"
 )
+
+// --------------------------------------------------------
+// Container indexing
+// --------------------------------------------------------
+func IndexContainerTypes(file *packageprocessor.CompilationFile) {
+    // look through all member nodes
+    for _, v := range file.Members {
+        // we're only looking for function nodes
+        if v.Type() != syntaxnodes.NT_Container {
+            continue
+        }
+
+        cntMem := v.(*syntaxnodes.ContainerNode)
+
+        // register a type symbol for this container
+        typ := symbols.NewTypeSymbol(cntMem.ContainerName.Buffer, []*symbols.TypeSymbol{}, symbols.CONT, 0, nil)
+
+        // register a container symbol for this container 
+        cnt := symbols.NewContainerSymbol(file.Package, cntMem.ContainerName.Buffer, typ)
+
+        ok := file.Package.TryRegisterContainer(cnt) 
+
+        if !ok {
+            error.Report(error.NewError(error.BND, cntMem.ContainerName.Position, "Cannot register container '%s'! A symbol with that name already exists!", cnt.ContainerName))
+            continue
+        }
+
+        file.Containers = append(file.Containers, cnt)
+        file.ContainerSrc[cnt] = cntMem
+    }
+}
+
+func IndexContainerContents(file *packageprocessor.CompilationFile) {
+    fields := []*symbols.FieldSymbol{}
+    cntSymbols := []string{}
+
+    // work through all containers
+    for _, cnt := range file.Containers {
+        src := file.ContainerSrc[cnt]
+
+        // bind all fields
+        for _, v := range src.Fields {
+            // resolve the field type
+            typ := LookupTypeClause(v.FieldType, file.Package)
+
+            // WAIT A MINUTE, DID WE HAVE A FIELD WITH THIS NAME ALREADY???
+            if slices.Contains(cntSymbols, v.FieldName.Buffer) {
+                // jes -> DIE!!!! >:)
+                error.Report(error.NewError(error.BND, v.Position(), "Cannot register field '%s'! A symbol with that name already exists!", v.FieldName.Buffer))
+                continue
+            }
+
+            // nah, we good
+            sym := symbols.NewFieldSymbol(cnt, v.FieldName.Buffer, typ)
+
+            // add it to the list
+            fields = append(fields, sym)
+            cntSymbols = append(cntSymbols, sym.FieldName)
+        }
+
+        // store the container contents in the container
+        cnt.Fields = fields
+    }
+}
 
 // --------------------------------------------------------
 // Function indexing
@@ -38,7 +103,7 @@ func IndexFunctions(file *packageprocessor.CompilationFile) {
             prms = append(prms, symbols.NewParameterSymbol(
                 prm.ParameterName.Buffer,
                 i,
-                LookupTypeClause(prm.ParameterType),
+                LookupTypeClause(prm.ParameterType, file.Package),
             ))
         }
 
@@ -46,7 +111,7 @@ func IndexFunctions(file *packageprocessor.CompilationFile) {
         fnc := symbols.NewFunctionSymbol(
             file.Package,
             fncMem.FunctionName.Buffer,
-            LookupTypeClause(fncMem.ReturnType),
+            LookupTypeClause(fncMem.ReturnType, file.Package),
             prms,
         )
 
@@ -76,7 +141,7 @@ func IndexGlobals(file *packageprocessor.CompilationFile) {
         glbMem := v.(*syntaxnodes.GlobalNode)
 
         // register a global symbol for this function
-        glb := symbols.NewGlobalSymbol(file.Package, glbMem.GlobalName.Buffer, LookupTypeClause(glbMem.VarType))
+        glb := symbols.NewGlobalSymbol(file.Package, glbMem.GlobalName.Buffer, LookupTypeClause(glbMem.VarType, file.Package))
         ok := file.Package.TryRegisterGlobal(glb) 
 
         if !ok {
@@ -206,7 +271,7 @@ func (bin *Binder) bindDeclarationStmt(stmt *syntaxnodes.DeclarationStatementNod
 
     // if theres an explicit type -> resolve it
     if stmt.HasExplicitType {
-        typ = LookupTypeClause(stmt.VarType)
+        typ = LookupTypeClause(stmt.VarType, bin.CurrentPackage)
     }
 
     // if we have an initializer -> bind it
@@ -605,7 +670,7 @@ func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boun
     // is this actually a cast?
     if !expr.HasPackage && len(expr.Parameters) == 1 {
         // are we calling a type name?
-        typ := LookupType(expr.Identifier.Buffer, expr.Identifier.Position, true)
+        typ := LookupType(expr.Identifier.Buffer, expr.Identifier.Position, bin.CurrentPackage, true)
         
         // if so -> bind a conversion
         if typ != nil {
@@ -672,7 +737,7 @@ func (bin *Binder) bindNameExpression(expr *syntaxnodes.NameExpressionNode) boun
 
 func (bin *Binder) bindMakeArrayExpression(expr *syntaxnodes.MakeArrayExpressionNode) boundnodes.BoundExpressionNode {
     // resolve the array type
-    typ := LookupTypeClause(expr.ArrType)
+    typ := LookupTypeClause(expr.ArrType, bin.CurrentPackage)
 
     // create an array type for it
     arrtyp := createArrayType(typ)
@@ -790,22 +855,30 @@ func (bin *Binder) bindConversion(expr boundnodes.BoundExpressionNode, typ *symb
 // --------------------------------------------------------
 // Helper functions
 // --------------------------------------------------------
-func LookupType(name string, pos span.Span, canfail bool) *symbols.TypeSymbol {
+func LookupType(name string, pos span.Span, pck *symbols.PackageSymbol, canfail bool) *symbols.TypeSymbol {
+    // lookup primitives
     typ, ok := compunit.GlobalDataTypeRegister[name]
-
-    if !ok {
-        if canfail {
-            return nil
-        }
-
-        error.Report(error.NewError(error.BND, pos, "Unknown data type '%s'!", name))
-        return compunit.GlobalDataTypeRegister["error"]
+    if ok {
+        return typ
     }
 
-    return typ
+    // lookup containers
+    cnt := LookupContainer(name, pck)
+    if cnt != nil {
+        return cnt.ContainerType
+    }
+
+    // if this allowed to fail -> do that
+    if canfail {
+        return nil
+    }
+
+    // otherwise -> DIE!!!!! (but like, gently, no crashing here :) ) 
+    error.Report(error.NewError(error.BND, pos, "Unknown data type '%s'!", name))
+    return compunit.GlobalDataTypeRegister["error"]
 }
 
-func LookupTypeClause(typ *syntaxnodes.TypeClauseNode) *symbols.TypeSymbol {
+func LookupTypeClause(typ *syntaxnodes.TypeClauseNode, pack *symbols.PackageSymbol) *symbols.TypeSymbol {
    
     // if the type clause does not exists -> void return type
     if typ == nil {
@@ -821,7 +894,7 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode) *symbols.TypeSymbol {
         }
 
         // if we do -> resolve it
-        subtype := LookupTypeClause(typ.SubTypes[0])
+        subtype := LookupTypeClause(typ.SubTypes[0], pack)
 
         // create a new type symbol
         arrsym := createArrayType(subtype) 
@@ -829,11 +902,42 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode) *symbols.TypeSymbol {
     }
 
     // otherwise -> look up the type
-    return LookupType(typ.TypeName.Buffer, typ.Position(), false)
+    return LookupType(typ.TypeName.Buffer, typ.Position(), pack, false)
 }
 
 func createArrayType(subtype *symbols.TypeSymbol) *symbols.TypeSymbol {
     return symbols.NewTypeSymbol(subtype.Name() + " Array", []*symbols.TypeSymbol{subtype}, symbols.ARR, 0, nil)
+}
+
+// --------------------------------------------------------
+// Container Lookup
+// --------------------------------------------------------
+func LookupContainer(name string, pck *symbols.PackageSymbol) *symbols.ContainerSymbol {
+    cnt := LookupContainerInPackage(name, pck)
+    if cnt != nil {
+        return cnt
+    }
+
+    // lookup containers in loaded packages
+    for _, pack := range pck.LoadedPackages {
+        cnt := LookupContainerInPackage(name, pack)
+        if cnt != nil {
+            return cnt
+        }
+    }
+
+    // got nothin man
+    return nil
+}
+
+func LookupContainerInPackage(name string, pack *symbols.PackageSymbol) *symbols.ContainerSymbol {
+    for _, v := range pack.Containers {
+        if v.ContainerName == name {
+            return v
+        }
+    }
+
+    return nil
 }
 
 // --------------------------------------------------------
@@ -902,9 +1006,7 @@ func (bin *Binder) LookupMethod(name string, typ *symbols.TypeSymbol) *symbols.F
     }
 
     // if we didnt find anything -> start looking through included packages
-    for _, pname := range bin.CurrentPackage.IncludedPackages {
-        pck := compunit.GetPackage(pname)
-
+    for _, pck := range bin.CurrentPackage.LoadedPackages {
         fnc := LookupMethodInPackage(pck, name, typ)
         if fnc != nil {
             return fnc

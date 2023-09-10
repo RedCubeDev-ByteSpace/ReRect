@@ -143,6 +143,9 @@ func (prs *Parser) parseMember() {
     } else if prs.current().Type == lexer.TT_KW_Var {
         mem = prs.parseGlobalMember()
 
+    } else if prs.current().Type == lexer.TT_KW_Container {
+        mem = prs.parseContainerMember()
+
     // anything else -> error
     } else {
         error.Report(error.NewError(error.PRS, prs.current().Position, "Expected member, instead got: '%s'!", prs.current().Type))
@@ -152,7 +155,8 @@ func (prs *Parser) parseMember() {
     }
    
     // if this isnt a function -> require a semicolon
-    if mem.Type() != syntaxnodes.NT_Function {
+    if mem.Type() != syntaxnodes.NT_Function && 
+       mem.Type() != syntaxnodes.NT_Container {
         prs.consume(lexer.TT_Semicolon)
     }
 
@@ -249,6 +253,29 @@ func (prs *Parser) parseGlobalMember() *syntaxnodes.GlobalNode {
     return syntaxnodes.NewGlobalNode(kw, id, typ)
 }
 
+func (prs *Parser) parseContainerMember() *syntaxnodes.ContainerNode {
+    // consume 'container' keyword
+    kw := prs.consume(lexer.TT_KW_Container)
+
+    // consume container name 
+    id := prs.consume(lexer.TT_Identifier)
+
+    // consume '{'
+    prs.consume(lexer.TT_OpenBraces)
+
+    // consume as many fields as we can
+    fields := []*syntaxnodes.FieldClauseNode{}
+    for prs.current().Type != lexer.TT_CloseBraces && 
+        prs.current().Type != lexer.TT_EOF {
+        
+        fields = append(fields, prs.parseFieldClause())
+    }
+
+    // consume '}'
+    cls := prs.consume(lexer.TT_CloseBraces)
+
+    return syntaxnodes.NewContainerNode(kw, id, fields, cls)
+}
 
 // --------------------------------------------------------
 // Clauses
@@ -261,6 +288,19 @@ func (prs *Parser) parseParameterClause() *syntaxnodes.ParameterClauseNode {
     typ := prs.parseTypeClause()
 
     return syntaxnodes.NewParameterClauseNode(id, typ)
+}
+
+func (prs *Parser) parseFieldClause() *syntaxnodes.FieldClauseNode {
+    // consume param name 
+    id := prs.consume(lexer.TT_Identifier)
+
+    // consume parm type
+    typ := prs.parseTypeClause()
+
+    // consume a semicolon
+    prs.consume(lexer.TT_Semicolon)
+
+    return syntaxnodes.NewFieldClauseNode(id, typ)
 }
 
 func (prs *Parser) parseTypeClause() *syntaxnodes.TypeClauseNode {

@@ -68,4 +68,5 @@ const (
     INT   TypeGroupType = "Integer type"
     FLOAT TypeGroupType = "Floating point type"
     ARR   TypeGroupType = "Array type"
+    CONT  TypeGroupType = "Container type"
 )

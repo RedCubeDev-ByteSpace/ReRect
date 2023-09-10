@@ -1,0 +1,12 @@
+package main;
+load sys include;
+
+function main() {
+    // mmm yes, container
+    var a ExtendedByte;
+}
+
+container ExtendedByte {
+    Num  byte;
+    Bits array[bool];
+}

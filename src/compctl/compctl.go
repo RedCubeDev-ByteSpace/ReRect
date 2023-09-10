@@ -109,6 +109,16 @@ func Compile(srcFiles []string) *CompilationResult {
     // Binding
     // -------
 
+    // Even Firsterer: Index all container datatypes (this NEEDS to be done first!!!! otherwise stuff cant be linked correctly!)
+    for _, file := range files {
+        binder.IndexContainerTypes(file)
+    }
+
+    // A little Firster: Index all container fields and methods
+    for _, file := range files {
+        binder.IndexContainerContents(file)
+    }
+
     // First: Index all functions and globals
     for _, file := range files {
         binder.IndexFunctions(file)

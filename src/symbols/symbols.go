@@ -18,4 +18,6 @@ const (
     ST_Local     SymbolType = "Local symbol"
     ST_Parameter SymbolType = "Parameter symbol"
     ST_Type      SymbolType = "Type symbol"
+    ST_Container SymbolType = "Container symbol"
+    ST_Field     SymbolType = "Field symbol"
 )

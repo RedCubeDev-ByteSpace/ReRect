@@ -22,6 +22,9 @@ type CompilationFile struct {
     FunctionBodies    map[*symbols.FunctionSymbol]boundnodes.BoundStatementNode
 
     Globals []*symbols.GlobalSymbol
+
+    Containers []*symbols.ContainerSymbol
+    ContainerSrc map[*symbols.ContainerSymbol]*syntaxnodes.ContainerNode
 }
 
 func Init() {
@@ -45,6 +48,10 @@ func Process(mems [][]syntaxnodes.MemberNode) []*CompilationFile {
             Functions: []*symbols.FunctionSymbol{},
             FunctionBodiesSrc: make(map[*symbols.FunctionSymbol]syntaxnodes.StatementNode),
             FunctionBodies: make(map[*symbols.FunctionSymbol]boundnodes.BoundStatementNode),
+
+            // here too :)
+            Containers: []*symbols.ContainerSymbol{},
+            ContainerSrc: make(map[*symbols.ContainerSymbol]*syntaxnodes.ContainerNode),
         })
     }
     

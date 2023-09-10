@@ -86,30 +86,32 @@ const (
     TT_KW_True                 TokenType = "TT_KW_True"
     TT_KW_False                TokenType = "TT_KW_False"
     TT_KW_Make                 TokenType = "TT_KW_Make"
+    TT_KW_Container            TokenType = "TT_KW_Container"
 
     // Identifiers
     TT_Identifier              TokenType = "TT_Identifier"
 )
 
 var Keywords = map[string]TokenType {
-    "load":     TT_KW_Load,
-    "include":  TT_KW_Include,
-    "package":  TT_KW_Package,
-    "function": TT_KW_Function,
-    "var":      TT_KW_Var,
-    "return":   TT_KW_Return,
-    "while":    TT_KW_While,
-    "from":     TT_KW_From,
-    "to":       TT_KW_To,
-    "for":      TT_KW_For,
-    "loop":     TT_KW_Loop,
-    "break":    TT_KW_Break,
-    "continue": TT_KW_Continue,
-    "true":     TT_KW_True,
-    "false":    TT_KW_False,
-    "if":       TT_KW_If,
-    "else":     TT_KW_Else,
-    "make":     TT_KW_Make,
+    "load":      TT_KW_Load,
+    "include":   TT_KW_Include,
+    "package":   TT_KW_Package,
+    "function":  TT_KW_Function,
+    "var":       TT_KW_Var,
+    "return":    TT_KW_Return,
+    "while":     TT_KW_While,
+    "from":      TT_KW_From,
+    "to":        TT_KW_To,
+    "for":       TT_KW_For,
+    "loop":      TT_KW_Loop,
+    "break":     TT_KW_Break,
+    "continue":  TT_KW_Continue,
+    "true":      TT_KW_True,
+    "false":     TT_KW_False,
+    "if":        TT_KW_If,
+    "else":      TT_KW_Else,
+    "make":      TT_KW_Make,
+    "container": TT_KW_Container,
 }
 
 var Symbols = map[string]TokenType {

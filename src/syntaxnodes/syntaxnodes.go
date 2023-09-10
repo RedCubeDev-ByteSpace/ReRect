@@ -36,6 +36,7 @@ const (
     NT_Package           SyntaxNodeType = "Package member"
     NT_Function          SyntaxNodeType = "Function member"
     NT_Global            SyntaxNodeType = "Global variable member"
+    NT_Container         SyntaxNodeType = "Container member"
 
     // Statements
     NT_DeclarationStmt   SyntaxNodeType = "Local variable statement"
@@ -67,4 +68,5 @@ const (
     // Clauses
     NT_ParameterCls      SyntaxNodeType = "Parameter clause"
     NT_TypeCls           SyntaxNodeType = "Type clause"
+    NT_FieldCls          SyntaxNodeType = "Field clause"
 )
