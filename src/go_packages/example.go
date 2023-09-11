@@ -45,21 +45,22 @@ func LoadExample() {
 	hotdogContainer.Fields = append(hotdogContainer.Fields, symbols.NewFieldSymbol(hotdogContainer, "name", compunit.GlobalDataTypeRegister["string"]))
 	hotdogContainer.Constructor = symbols.NewVMMethodSymbol(
 		example,
-		symbols.MT_GROUP,
+		symbols.MT_STRICT,
 		hotdogTypeSymbol,
-		"Constructor",
+		"Construct",
 		compunit.GlobalDataTypeRegister["void"],
 		[]*symbols.ParameterSymbol{
 			symbols.NewParameterSymbol("name", 0, compunit.GlobalDataTypeRegister["string"]),
 		},
 		Hotdog_Constructor,
 	)
+	registerFunction(packName, hotdogContainer.Constructor)
 
 	registerFunction(
 		packName,
 		symbols.NewVMMethodSymbol(
 			example,
-			symbols.MT_GROUP,
+			symbols.MT_STRICT,
 			hotdogTypeSymbol,
 			"Dance",
 			compunit.GlobalDataTypeRegister["void"],
@@ -72,7 +73,7 @@ func LoadExample() {
 		packName,
 		symbols.NewVMMethodSymbol(
 			example,
-			symbols.MT_GROUP,
+			symbols.MT_STRICT,
 			hotdogTypeSymbol,
 			"Debug",
 			compunit.GlobalDataTypeRegister["string"],
