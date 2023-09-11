@@ -17,7 +17,7 @@ type ContainerSymbol struct {
 }
 
 func NewContainerSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *ContainerSymbol {
-    return &ContainerSymbol{
+    cnt := &ContainerSymbol{
         ParentPackage: pck,
         ContainerName: name,
         ContainerType: typ,
@@ -28,6 +28,12 @@ func NewContainerSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *Conta
         // same here
         Symbols: make([]string, 0),
     }
+
+    // link the given type symbol to this container
+    typ.Container = cnt
+
+    // ok we don
+    return cnt
 }
 
 func (sym *ContainerSymbol) Name() string {
