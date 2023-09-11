@@ -15,6 +15,7 @@ func Load() {
     // Load the sys package
     LoadInternal()
     LoadSys()
+	// LoadExample()
 }
 
 // A few helpers
@@ -36,4 +37,14 @@ func registerFunction(pack string, fnc *symbols.FunctionSymbol) {
     }
 
     pck.Functions = append(pck.Functions, fnc)
+}
+
+func registerContainer(pack string, con *symbols.ContainerSymbol) {
+	pck := compunit.GetPackage(pack)
+
+	if pck == nil {
+		error.Report(error.NewError(error.GOP, span.Internal(), "Unable to register container '%s' in package '%s'! No package called '%s' could be found!", con.ContainerName, pack, pack))
+	}
+
+	pck.Containers = append(pck.Containers, con)
 }
