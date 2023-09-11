@@ -1,0 +1,10 @@
+package other;
+load sys include;
+
+container Container {
+    Value int;
+
+    function CoolBeans() {
+        Print("everybody gangster till the beans are cool (also: " + string(Value) + ")");
+    }
+}

@@ -314,5 +314,16 @@ func EvalConversion(val interface{}, to *symbols.TypeSymbol) (interface{}, bool)
         }
     }
 
+    // Casting to container
+    if to.TypeGroup == symbols.CONT {
+        switch v := val.(type) {
+        case *ContainerInstance:
+            // only cast when the internal types match
+            if v.Type.Equal(to) {
+                return v, true
+            }
+        }
+    }
+
     return nil, false
 }

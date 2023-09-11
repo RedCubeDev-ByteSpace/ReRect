@@ -91,8 +91,6 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
                 continue
             }
 
-            hasConstructor = true
-
             // create parameter symbols
             prms := []*symbols.ParameterSymbol{}
             for i, prm := range fncMem.Parameters {
@@ -103,12 +101,25 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
                 ))
             }
 
+            ret := LookupTypeClause(fncMem.ReturnType, file.Package)
+
+            // if this is a constructor -> we found one
+            if fncMem.IsConstructor {
+                // is this legal doe?
+                if !ret.Equal(compunit.GlobalDataTypeRegister["void"]) {
+                    error.Report(error.NewError(error.BND, fncMem.ReturnType.Position(), "Constructor is required to be of type void!"))
+                    continue
+                }
+
+                hasConstructor = true
+            }
+
             // register a function symbol for this method
             fnc := symbols.NewMethodSymbol(
                 file.Package,
                 cnt.ContainerType,
                 fncMem.FunctionName.Buffer,
-                LookupTypeClause(fncMem.ReturnType, file.Package),
+                ret,
                 prms,
             )
 
@@ -762,6 +773,18 @@ func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boun
         }
     }
 
+    // is this actually a cast but to a type from a different package?
+    if expr.HasPackage && len(expr.Parameters) == 1 {
+        // see if this is actually a container
+        cnt := bin.LookupContainerInPackage(expr.Package.Buffer, expr.Identifier.Buffer)
+
+        // if we got something -> bind a conversion
+        if cnt != nil {
+            exp := bin.bindExpression(expr.Parameters[0])
+            return bin.bindConversion(exp, cnt.ContainerType, true)
+        }
+    }
+
     // otherwise -> bind a call
     // ------------------------
 
@@ -1061,6 +1084,31 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode, pack *symbols.PackageSymb
         return arrsym
     }
 
+    // if the type clause has a package prefix -> this is def a container
+    // (packages cant just contain random primitives)
+    if typ.HasPackageName {
+        // look up the package
+        pck := LookupPackageInPackage(pack, typ.PackageName.Buffer)
+
+        // did it work?
+        if pck == nil {
+            error.Report(error.NewError(error.BND, typ.PackageName.Position, "Could not find package '%s'!", typ.PackageName.Buffer))
+            return compunit.GlobalDataTypeRegister["error"]
+        }
+
+        // look up the container
+        cnt := LookupContainerInPackage(typ.TypeName.Buffer, pck)
+
+        // did it work?
+        if cnt == nil {
+            error.Report(error.NewError(error.BND, typ.TypeName.Position, "Could not find type '%s' in '%s'!", typ.TypeName.Buffer, typ.PackageName.Buffer))
+            return compunit.GlobalDataTypeRegister["error"]
+        }
+
+        // ok cool
+        return cnt.ContainerType
+    }
+
     // otherwise -> look up the type
     return LookupType(typ.TypeName.Buffer, typ.Position(), pack, false)
 }
@@ -1127,8 +1175,29 @@ func LookupFieldInContainer(name string, cnt *symbols.ContainerSymbol) *symbols.
 // Package lookup
 // --------------------------------------------------------
 func (bin *Binder) LookupPackage(name string) *symbols.PackageSymbol {
+    // wait, is this us?
+    if bin.CurrentPackage.Name() == name {
+        return bin.CurrentPackage
+    }
+
     // look the package up
     for _, p := range bin.CurrentPackage.LoadedPackages {
+        if p.Name() == name {
+            return p
+        }
+    }
+    
+    return nil
+}
+
+func LookupPackageInPackage(pack *symbols.PackageSymbol, name string) *symbols.PackageSymbol {
+    // wait, is this us?
+    if pack.Name() == name {
+        return pack 
+    }
+
+    // look the package up
+    for _, p := range pack.LoadedPackages {
         if p.Name() == name {
             return p
         }

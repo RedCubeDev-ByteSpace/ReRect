@@ -329,6 +329,18 @@ func (prs *Parser) parseFieldClause() *syntaxnodes.FieldClauseNode {
 }
 
 func (prs *Parser) parseTypeClause() *syntaxnodes.TypeClauseNode {
+    var pack lexer.Token
+    hasPackage := false
+
+    // is there a package prefix?
+    if prs.peek(1).Type == lexer.TT_Package {
+        // consume the package name
+        pack = prs.consume(lexer.TT_Identifier)
+
+        // consume the ::
+        prs.consume(lexer.TT_Package)
+    }
+
     // consume type name
     id := prs.consume(lexer.TT_Identifier)
 
@@ -357,7 +369,7 @@ func (prs *Parser) parseTypeClause() *syntaxnodes.TypeClauseNode {
     }
 
     // create new clause
-    return syntaxnodes.NewTypeClauseNode(id, subtypes)
+    return syntaxnodes.NewTypeClauseNode(pack, hasPackage, id, subtypes)
 }
 
 func (prs *Parser) parseFieldAssignmentClause() *syntaxnodes.FieldAssignmentClauseNode {
@@ -773,7 +785,6 @@ func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
 
         hasPackage = true
     }
-
 
     // consume call expression
     id := prs.consume(lexer.TT_Identifier)

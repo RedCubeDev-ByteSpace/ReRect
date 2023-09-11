@@ -1,0 +1,16 @@
+package main;
+load other;
+
+function main() {
+    var a <- makeA();
+    var b <- any(a);
+    var c <- other::Container(b);
+
+    c->CoolBeans();
+}
+
+function makeA() other::Container {
+    return make other::Container {
+        Value <- 240 // cool number
+    };
+}

@@ -8,12 +8,17 @@ import (
 type TypeClauseNode struct {
     SyntaxNode
 
+    PackageName lexer.Token
+    HasPackageName bool
+
     TypeName lexer.Token
     SubTypes []*TypeClauseNode
 }
 
-func NewTypeClauseNode(typname lexer.Token, subtypes []*TypeClauseNode) *TypeClauseNode {
+func NewTypeClauseNode(packname lexer.Token, haspack bool, typname lexer.Token, subtypes []*TypeClauseNode) *TypeClauseNode {
     return &TypeClauseNode{
+        PackageName: packname,
+        HasPackageName: haspack,
         TypeName: typname,
         SubTypes: subtypes,
     }
