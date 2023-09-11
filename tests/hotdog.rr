@@ -1,0 +1,9 @@
+load sys include;
+load example include;
+
+function main() {
+    var kevin <- make Hotdog("test");
+    kevin->Dance();
+    Print(kevin->Debug());
+    Print(kevin->name); // panic: runtime error: invalid memory address or nil pointer dereference
+}
