@@ -38,6 +38,7 @@ func LoadExample() {
 
 	hotdogTypeSymbol := symbols.NewTypeSymbol("Hotdog", []*symbols.TypeSymbol{}, symbols.CONT, 0, nil)
 	hotdogContainer := symbols.NewContainerSymbol(example, "Hotdog", hotdogTypeSymbol)
+	hotdogTypeSymbol.Container = hotdogContainer // "doubly linked" more like "doubly ludicrous" >:(
 
 	registerContainer(packName, hotdogContainer)
 
