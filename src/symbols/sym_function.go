@@ -3,104 +3,106 @@ package symbols
 // Function variable symbol
 // ---------------------
 type FunctionSymbol struct {
-    Symbol
+	Symbol
 
-    FunctionKind FunctionType
-    MethodKind MethodType
-    MethodSource *TypeSymbol
+	FunctionKind FunctionType
+	MethodKind   MethodType
+	MethodSource *TypeSymbol
 
-    ParentPackage *PackageSymbol
+	ParentPackage *PackageSymbol
 
-    FuncName string
-    ReturnType *TypeSymbol
+	FuncName   string
+	ReturnType *TypeSymbol
 
-    IsVMFunction bool
-    FunctionPointer VMFPtr
-    MethodPointer VMMPtr
+	IsVMFunction    bool
+	FunctionPointer VMFPtr
+	MethodPointer   VMMPtr
 
-    Parameters []*ParameterSymbol
+	Parameters []*ParameterSymbol
 }
 
 type VMFPtr func([]interface{}) interface{}
 type VMMPtr func(interface{}, []interface{}) interface{}
 
 func NewFunctionSymbol(pck *PackageSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol) *FunctionSymbol {
-    return &FunctionSymbol{
-        FunctionKind: FT_FUNC,
-        ParentPackage: pck,
+	return &FunctionSymbol{
+		FunctionKind:  FT_FUNC,
+		ParentPackage: pck,
 
-        FuncName: name,
-        ReturnType: typ,
-        Parameters: params,
+		FuncName:   name,
+		ReturnType: typ,
+		Parameters: params,
 
-        IsVMFunction: false,
-    }
+		IsVMFunction: false,
+	}
 }
 
 func NewMethodSymbol(pck *PackageSymbol, src *TypeSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol) *FunctionSymbol {
-    return &FunctionSymbol{
-        FunctionKind: FT_METH,
-        MethodKind: MT_STRICT,
-        MethodSource: src,
+	return &FunctionSymbol{
+		FunctionKind: FT_METH,
+		MethodKind:   MT_STRICT,
+		MethodSource: src,
 
-        ParentPackage: pck,
+		ParentPackage: pck,
 
-        FuncName: name,
-        ReturnType: typ,
-        Parameters: params,
+		FuncName:   name,
+		ReturnType: typ,
+		Parameters: params,
 
-        IsVMFunction: false,
-    }
+		IsVMFunction: false,
+	}
 }
 
 func NewVMFunctionSymbol(pck *PackageSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol, ptr VMFPtr) *FunctionSymbol {
-    return &FunctionSymbol{
-        FunctionKind: FT_FUNC,
-        ParentPackage: pck,
+	return &FunctionSymbol{
+		FunctionKind:  FT_FUNC,
+		ParentPackage: pck,
 
-        FuncName: name,
-        ReturnType: typ,
-        Parameters: params,
+		FuncName:   name,
+		ReturnType: typ,
+		Parameters: params,
 
-        IsVMFunction: true,
-        FunctionPointer: ptr,
-    }
+		IsVMFunction:    true,
+		FunctionPointer: ptr,
+	}
 }
 
 func NewVMMethodSymbol(pck *PackageSymbol, meth MethodType, src *TypeSymbol, name string, typ *TypeSymbol, params []*ParameterSymbol, ptr VMMPtr) *FunctionSymbol {
-    return &FunctionSymbol{
-        FunctionKind: FT_METH,
-        MethodKind: meth,
-        MethodSource: src,
+	return &FunctionSymbol{
+		FunctionKind: FT_METH,
+		MethodKind:   meth,
+		MethodSource: src,
 
-        ParentPackage: pck,
+		ParentPackage: pck,
 
-        FuncName: name,
-        ReturnType: typ,
-        Parameters: params,
+		FuncName:   name,
+		ReturnType: typ,
+		Parameters: params,
 
-        IsVMFunction: true,
-        MethodPointer: ptr,
-    }
+		IsVMFunction:  true,
+		MethodPointer: ptr,
+	}
 }
 
 func (sym *FunctionSymbol) Name() string {
-    return sym.FuncName
+	return sym.FuncName
 }
 
 func (sym *FunctionSymbol) Type() SymbolType {
-    return ST_Function
+	return ST_Function
 }
 
-type FunctionType string;
+type FunctionType string
+
 const (
-    FT_FUNC FunctionType = "Function"
-    FT_METH FunctionType = "Method"
+	FT_FUNC FunctionType = "Function"
+	FT_METH FunctionType = "Method"
 )
 
-type MethodType string;
+type MethodType string
+
 const (
-    MT_STRICT MethodType = "Strict"
-    MT_GROUP  MethodType = "Group"
-    MT_ALL MethodType = "All"
+	MT_STRICT MethodType = "Strict" // Just a single, specific type
+	MT_GROUP  MethodType = "Group"  // All types of a single group (all ints, all floats, all arrays, or all containers)
+	MT_ALL    MethodType = "All"    // Literally all types
 )
