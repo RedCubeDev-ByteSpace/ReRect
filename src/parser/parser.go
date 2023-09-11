@@ -95,8 +95,8 @@ func (prs *Parser) consumeWord(word string) lexer.Token {
 
 // real time travel shit
 func (prs *Parser) rewind(tok lexer.Token) {
-    for prs.current().Type != tok.Type &&
-        prs.current().Position != tok.Position {
+    for  !(prs.current().Type == tok.Type &&
+         prs.current().Position.Equal(tok.Position)) {
 
         prs.step(-1)
     }
@@ -775,7 +775,7 @@ func (prs *Parser) parseAssignmentExpression(expr syntaxnodes.ExpressionNode) *s
     return syntaxnodes.NewAssignmentExpressionNode(expr, val)
 }
 
-func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
+func (prs *Parser) parseCallExpression() syntaxnodes.ExpressionNode {
     var pack lexer.Token
     hasPackage := false
 
@@ -788,6 +788,17 @@ func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
 
     // consume call expression
     id := prs.consume(lexer.TT_Identifier)
+
+    // wait is this actually a package global and not a call?
+    if prs.current().Type != lexer.TT_OpenParenthesis {
+        if hasPackage {
+            prs.rewind(pack)
+        } else {
+            prs.rewind(id)
+        }
+
+        return prs.parseNameExpression()
+    }
 
     // consume '('
     prs.consume(lexer.TT_OpenParenthesis)
@@ -812,12 +823,22 @@ func (prs *Parser) parseCallExpression() *syntaxnodes.CallExpressionNode {
     return syntaxnodes.NewCallExpressionNode(id, pack, hasPackage, args, cprm)
 }
 
-func (prs *Parser) parseNameExpression() *syntaxnodes.NameExpressionNode {
+func (prs *Parser) parseNameExpression() syntaxnodes.ExpressionNode {
+    var pack lexer.Token
+    hasPackage := false
+
+    // is there a package prefix?
+    if prs.peek(1).Type == lexer.TT_Package {
+        pack = prs.consume(lexer.TT_Identifier)
+        prs.consume(lexer.TT_Package)
+        hasPackage = true
+    }
+
     // consume name
     id := prs.consume(lexer.TT_Identifier)
 
     // create new node
-    return syntaxnodes.NewNameExpressionNode(id)
+    return syntaxnodes.NewNameExpressionNode(pack, hasPackage, id)
 }
 
 func (prs *Parser) parseParenthesizedExpression() *syntaxnodes.ParenthesizedExpressionNode {

@@ -8,11 +8,16 @@ import (
 type NameExpressionNode struct {
     ExpressionNode
 
+    PackageName lexer.Token
+    HasPackage bool
+
     Identifier lexer.Token
 }
 
-func NewNameExpressionNode(id lexer.Token) *NameExpressionNode {
+func NewNameExpressionNode(pack lexer.Token, haspack bool, id lexer.Token) *NameExpressionNode {
     return &NameExpressionNode{
+        PackageName: pack,
+        HasPackage: haspack,
         Identifier: id,
     }
 }

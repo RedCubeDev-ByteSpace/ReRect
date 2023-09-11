@@ -1,9 +1,19 @@
+package main;
 load sys include;
 load Other;
 
+var Field int;
 var CoolGlobal int;
 
 function main() {
+    // set field
+    Field <- 100;
+
+    // create a container
+    var tst <- make Test {
+        Field <- 200;
+    };
+
     loop (10) {
         addOne();
         Print(string(Other::GetCoolerGlobal()));
@@ -13,3 +23,5 @@ function main() {
 function addOne() {
     Other::SetCoolerGlobal(Other::GetCoolerGlobal() + "1");
 }
+
+

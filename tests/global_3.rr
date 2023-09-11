@@ -1,0 +1,32 @@
+package main;
+load sys include;
+load Other;
+
+var Field int;
+
+function main() {
+
+    // set field
+    Field <- 100;
+
+    // create a container
+    var tst <- make Test {
+        Field <- 200
+    };
+
+    // run the test ig
+    tst->PrintFields();
+}
+
+// Container business
+container Test {
+    Field int;
+
+    function PrintFields() {
+        // print the field var in this container
+        Print(string(Field));
+
+        // print the field global
+        Print(string(main::Field));
+    }
+}

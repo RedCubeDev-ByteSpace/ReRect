@@ -828,6 +828,28 @@ func (bin *Binder) bindCallExpression(expr *syntaxnodes.CallExpressionNode) boun
 }
 
 func (bin *Binder) bindNameExpression(expr *syntaxnodes.NameExpressionNode) boundnodes.BoundExpressionNode {
+    // is this a global name expression?
+    if expr.HasPackage {
+        // only globals in this package are accessible
+        if bin.CurrentPackage.Name() != expr.PackageName.Buffer {
+            error.Report(error.NewError(error.BND, expr.Position(), "Unable to resolve global '%s' in package '%s': only globals in the current package ('%s') are allowed to be accessed!", expr.Identifier.Buffer, expr.PackageName.Buffer, bin.CurrentPackage.Name()))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        }
+
+        // if we *are* in this package
+        // look up the global
+        glb := bin.LookupGlobal(expr.Identifier.Buffer)
+
+        // did we find one?
+        if glb == nil {
+            error.Report(error.NewError(error.BND, expr.Position(), "Could not find global called '%s'!", expr.Identifier.Buffer))
+            return boundnodes.NewBoundErrorExpressionNode(expr)
+        }
+
+        // ok cool
+        return boundnodes.NewBoundNameExpressionNode(expr, glb)
+    }
+
     // look up variable
     vari := bin.CurrentScope.LookupVariable(expr.Identifier.Buffer)
 
@@ -1164,6 +1186,20 @@ func LookupContainerInPackage(name string, pack *symbols.PackageSymbol) *symbols
 func LookupFieldInContainer(name string, cnt *symbols.ContainerSymbol) *symbols.FieldSymbol {
     for _, v := range cnt.Fields {
         if v.FieldName == name {
+            return v
+        }
+    }
+
+    return nil
+}
+
+
+// --------------------------------------------------------
+// Global lookup
+// --------------------------------------------------------
+func (bin *Binder) LookupGlobal(name string) *symbols.GlobalSymbol {
+    for _, v := range bin.CurrentPackage.Globals {
+        if v.Name() == name {
             return v
         }
     }

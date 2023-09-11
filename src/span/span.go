@@ -18,6 +18,15 @@ type Span struct {
     Internal bool
 }
 
+// Mmmm are these the same?
+// ------------------------
+func (s1 Span) Equal(s2 Span) bool {
+    return s1.File     == s2.File    && 
+           s1.FromIdx  == s2.FromIdx &&
+           s1.ToIdx    == s2.ToIdx   &&
+           s1.Internal == s2.Internal 
+} 
+
 // Shortcut for getting an internal span
 // -------------------------------------
 func Internal() Span {
