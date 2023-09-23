@@ -21,4 +21,5 @@ const (
     ST_Container SymbolType = "Container symbol"
     ST_Field     SymbolType = "Field symbol"
     ST_Instance  SymbolType = "Instance symbol"
+    ST_Trait     SymbolType = "Trait symbol"
 )

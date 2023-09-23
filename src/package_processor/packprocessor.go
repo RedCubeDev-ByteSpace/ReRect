@@ -25,6 +25,9 @@ type CompilationFile struct {
 
     Containers []*symbols.ContainerSymbol
     ContainerSrc map[*symbols.ContainerSymbol]*syntaxnodes.ContainerNode
+
+    Traits []*symbols.TraitSymbol
+    TraitSrc map[*symbols.TraitSymbol]*syntaxnodes.TraitNode
 }
 
 func Init() {
@@ -52,6 +55,10 @@ func Process(mems [][]syntaxnodes.MemberNode) []*CompilationFile {
             // here too :)
             Containers: []*symbols.ContainerSymbol{},
             ContainerSrc: make(map[*symbols.ContainerSymbol]*syntaxnodes.ContainerNode),
+
+            // here even more so
+            Traits: []*symbols.TraitSymbol{},
+            TraitSrc: make(map[*symbols.TraitSymbol]*syntaxnodes.TraitNode),
         })
     }
     

@@ -9,6 +9,15 @@ type FunctionSymbol struct {
 	MethodKind   MethodType
 	MethodSource *TypeSymbol
 
+    SourceTrait *TraitSymbol
+
+    // if this is a method implemented by a trait -> mark it as needing to be redirected and add a reference
+    NeedsVirtualCallToTrait bool
+    TraitSourceMethod *FunctionSymbol 
+
+    // if this is a trait method implemented by the container -> mark it as needing to be redirected to the container
+    NeedsVirtualCallToContainer bool
+
 	ParentPackage *PackageSymbol
 
 	FuncName   string

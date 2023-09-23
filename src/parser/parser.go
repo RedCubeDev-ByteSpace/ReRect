@@ -152,8 +152,13 @@ func (prs *Parser) parseMember() {
     } else if prs.current().Type == lexer.TT_KW_Var {
         mem = prs.parseGlobalMember()
 
+    // container <containername> (<traits>) { ... }
     } else if prs.current().Type == lexer.TT_KW_Container {
         mem = prs.parseContainerMember()
+
+    // trait <traitname> { ... }
+    } else if prs.current().Type == lexer.TT_KW_Trait {
+        mem = prs.parseTraitMember()
 
     // anything else -> error
     } else {
@@ -164,7 +169,8 @@ func (prs *Parser) parseMember() {
     }
    
     // if this isnt a function -> require a semicolon
-    if mem.Type() != syntaxnodes.NT_Function && 
+    if mem.Type() != syntaxnodes.NT_Function &&
+       mem.Type() != syntaxnodes.NT_Trait    &&
        mem.Type() != syntaxnodes.NT_Container {
         prs.consume(lexer.TT_Semicolon)
     }
@@ -233,13 +239,17 @@ func (prs *Parser) parseFunctionMember() *syntaxnodes.FunctionNode {
     // parse return type
     var retType *syntaxnodes.TypeClauseNode
     hasReturnType := false
-    if prs.current().Type != lexer.TT_OpenBraces && prs.current().Type != lexer.TT_Colon {
+    if prs.current().Type != lexer.TT_OpenBraces &&
+       prs.current().Type != lexer.TT_Semicolon &&
+       prs.current().Type != lexer.TT_Colon {
         retType = prs.parseTypeClause()
         hasReturnType = true
     }
 
     // parse the body
     var body syntaxnodes.StatementNode
+    var closing lexer.Token
+    hasBody := true
 
     // the body can either be a single line, a la:
     // function a(): Print("hello"); 
@@ -247,13 +257,19 @@ func (prs *Parser) parseFunctionMember() *syntaxnodes.FunctionNode {
         prs.consume(lexer.TT_Colon)
         body = prs.parseStatement()
 
+    // nothing, as in function declarations
+    // function b();
+    } else if prs.current().Type == lexer.TT_Semicolon {
+        closing = prs.consume(lexer.TT_Semicolon)
+        hasBody = false
+
     // or a traditional block statement
-    // function b() { ... }
+    // function c() { ... }
     } else {
         body = prs.parseBlockStatement()
     }
 
-    return syntaxnodes.NewFunctionNode(kw, id, isConstructor, params, retType, hasReturnType, body)
+    return syntaxnodes.NewFunctionNode(kw, id, isConstructor, params, retType, hasReturnType, body, hasBody, closing)
 }
 
 func (prs *Parser) parseGlobalMember() *syntaxnodes.GlobalNode {
@@ -277,9 +293,62 @@ func (prs *Parser) parseContainerMember() *syntaxnodes.ContainerNode {
     // consume container name 
     id := prs.consume(lexer.TT_Identifier)
 
+    // do we have some cool traits?
+    traits := []*syntaxnodes.TraitClauseNode{}
+    if prs.current().Type == lexer.TT_OpenParenthesis {
+        // consume (
+        prs.consume(lexer.TT_OpenParenthesis)
+
+        for prs.current().Type != lexer.TT_CloseParenthesis {
+            // parse a trait
+            traits = append(traits, prs.parseTraitClause())
+
+            // if theres a comma -> consume it
+            if prs.current().Type == lexer.TT_Comma {
+                prs.consume(lexer.TT_Comma)
+
+            // otherwise -> assume end of list
+            } else {
+                break
+            }
+        }
+
+        // consume )
+        prs.consume(lexer.TT_CloseParenthesis)
+    }
+
     // consume '{'
     prs.consume(lexer.TT_OpenBraces)
 
+    // parse fields and methods
+    fields, methods := prs.parseContainerOrTraitMembers()
+
+    // consume '}'
+    cls := prs.consume(lexer.TT_CloseBraces)
+
+    return syntaxnodes.NewContainerNode(kw, id, fields, methods, traits, cls)
+}
+
+func (prs *Parser) parseTraitMember() *syntaxnodes.TraitNode {
+    // consume 'trait' keyword
+    kw := prs.consume(lexer.TT_KW_Trait)
+
+    // consume trait name 
+    id := prs.consume(lexer.TT_Identifier)
+
+    // consume '{'
+    prs.consume(lexer.TT_OpenBraces)
+
+    // parse fields and methods
+    fields, methods := prs.parseContainerOrTraitMembers()
+
+    // consume '}'
+    cls := prs.consume(lexer.TT_CloseBraces)
+
+    return syntaxnodes.NewTraitNode(kw, id, fields, methods, cls)
+}
+
+func (prs *Parser) parseContainerOrTraitMembers() ([]*syntaxnodes.FieldClauseNode, []*syntaxnodes.FunctionNode) {
     // consume as many members as we can
     fields := []*syntaxnodes.FieldClauseNode{}
     methods := []*syntaxnodes.FunctionNode{}
@@ -296,10 +365,7 @@ func (prs *Parser) parseContainerMember() *syntaxnodes.ContainerNode {
         }
     }
 
-    // consume '}'
-    cls := prs.consume(lexer.TT_CloseBraces)
-
-    return syntaxnodes.NewContainerNode(kw, id, fields, methods, cls)
+    return fields, methods
 }
 
 // --------------------------------------------------------
@@ -384,6 +450,22 @@ func (prs *Parser) parseFieldAssignmentClause() *syntaxnodes.FieldAssignmentClau
 
     // ok cool
     return syntaxnodes.NewFieldAssignmentClauseNode(id, val)
+}
+
+func (prs *Parser) parseTraitClause() *syntaxnodes.TraitClauseNode {
+    // is there a package?
+    var pack lexer.Token
+    hasPackage := false
+
+    if prs.peek(1).Type == lexer.TT_Package {
+        pack = prs.consume(lexer.TT_Identifier)
+        prs.consume(lexer.TT_Package)
+        hasPackage = true
+    }
+
+    id := prs.consume(lexer.TT_Identifier)
+
+    return syntaxnodes.NewTraitClauseNode(pack, hasPackage, id)
 }
 
 // --------------------------------------------------------

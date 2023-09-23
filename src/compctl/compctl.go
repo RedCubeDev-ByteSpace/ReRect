@@ -109,14 +109,48 @@ func Compile(srcFiles []string) *CompilationResult {
     // Binding
     // -------
 
+    // Event EVEN Firsterer: Index all trait datatypes (this NEEDS to be done before containers!!! otherwise the container cant look up what traits its based on)
+    for _, file := range files {
+        binder.IndexTraitTypes(file)
+    }
+
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return compFailed()
+    }
+
     // Even Firsterer: Index all container datatypes (this NEEDS to be done first!!!! otherwise stuff cant be linked correctly!)
     for _, file := range files {
         binder.IndexContainerTypes(file)
     }
 
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return compFailed()
+    }
+
+    // A slight bit Firsterer: Index all trait fields and methods
+    for _, file := range files {
+        binder.IndexTraitContents(file)
+    }
+
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return compFailed()
+    }
+
     // A little Firster: Index all container fields and methods
     for _, file := range files {
         binder.IndexContainerContents(file)
+    }
+
+    // if there are errors -> output them and stop execution
+    if error.HasErrors() {
+        error.Output()
+        return compFailed()
     }
 
     // First: Index all functions and globals

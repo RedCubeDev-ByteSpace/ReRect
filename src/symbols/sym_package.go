@@ -11,6 +11,8 @@ type PackageSymbol struct {
     Functions []*FunctionSymbol
     Globals []*GlobalSymbol
     Containers []*ContainerSymbol
+    Traits []*TraitSymbol
+
     SymbolNames []string
 
     LoadedPackages map[string]*PackageSymbol
@@ -35,6 +37,16 @@ func (sym *PackageSymbol) Type() SymbolType {
     return ST_Package
 }
 
+func (sym *PackageSymbol) TryRegisterTrait(trt *TraitSymbol) bool {
+    // check if a symbol with this name already exists
+    if slices.Contains(sym.SymbolNames, trt.Name()) {
+        return false
+    }
+
+    sym.Traits = append(sym.Traits, trt)
+    sym.SymbolNames = append(sym.SymbolNames, trt.Name())
+    return true
+}
 
 func (sym *PackageSymbol) TryRegisterContainer(cnt *ContainerSymbol) bool {
     // check if a symbol with this name already exists

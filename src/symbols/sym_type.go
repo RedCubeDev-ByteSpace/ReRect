@@ -12,6 +12,7 @@ type TypeSymbol struct {
     TypeSize int
 
     Container *ContainerSymbol
+    Trait *TraitSymbol
 
     Default interface{}
 }
@@ -71,4 +72,5 @@ const (
     FLOAT TypeGroupType = "Floating point type"
     ARR   TypeGroupType = "Array type"
     CONT  TypeGroupType = "Container type"
+    TRT   TypeGroupType = "Trait type"
 )

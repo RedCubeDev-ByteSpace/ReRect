@@ -70,6 +70,38 @@ func ClassifyConversion(from *symbols.TypeSymbol, to *symbols.TypeSymbol) Conver
         return CT_Explicit
     }
 
+    // allow implicit container -> trait if the container implements the trait
+    if from.TypeGroup == symbols.CONT &&
+       to.TypeGroup   == symbols.TRT {
+
+        // check if the container implements the trait
+        cnt := from.Container
+        for _, t := range cnt.Traits {
+            if t.TraitType.Equal(to) {
+                return CT_Implicit
+            }
+        }
+
+        // if it doesnt -> death
+        return CT_None
+    } 
+
+    // allow explicit trait -> container if the container implements the trait
+    if from.TypeGroup == symbols.TRT &&
+       to.TypeGroup   == symbols.CONT {
+
+        // check if the container implements the trait
+        cnt := to.Container
+        for _, t := range cnt.Traits {
+            if t.TraitType.Equal(from) {
+                return CT_Explicit
+            }
+        }
+
+        // if it doesnt -> death
+        return CT_None
+    } 
+
     // otherwise -> dont convert
     return CT_None
 }

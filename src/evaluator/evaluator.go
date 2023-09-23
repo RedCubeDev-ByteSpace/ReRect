@@ -158,6 +158,13 @@ func (evl *Evaluator) call(fnc *symbols.FunctionSymbol, args []interface{}) inte
         evl.setVar(fnc.Parameters[i], args[i])
     }
 
+    // is this a virtual call?
+    // (like a trait method being called on a container)
+    if fnc.NeedsVirtualCallToTrait {
+        // redirect
+        fnc = fnc.TraitSourceMethod
+    }
+
     // run the function body
     val := evl.run(evl.Functions[fnc])
 
@@ -188,6 +195,23 @@ func (evl *Evaluator) callMethod(fnc *symbols.FunctionSymbol, instance interface
         evl.setVar(fnc.Parameters[i], args[i])
     }
 
+    // is this a virtual call?
+    // (like a trait method being called on a container)
+    if fnc.NeedsVirtualCallToTrait {
+        // redirect
+        fnc = fnc.TraitSourceMethod
+    }
+
+    if fnc.NeedsVirtualCallToContainer {
+        // redirect
+        fnc = evl.resolveVirtualMethod(fnc, instance)
+
+        if fnc == nil {
+            error.Report(error.NewError(error.RNT, span.Internal(), "Something has gone horribly wrong! (could not resolve container method implementation for virtual call from trait)"))
+            return nil
+        }
+    }
+
     // run the function body
     val := evl.run(evl.Functions[fnc])
 
@@ -200,6 +224,23 @@ func (evl *Evaluator) callMethod(fnc *symbols.FunctionSymbol, instance interface
 
 func (evl *Evaluator) callMethodVM(fnc *symbols.FunctionSymbol, instance interface{}, args []interface{}) interface{} {
    return fnc.MethodPointer(instance, args) 
+}
+
+// Virtual method lookup 
+// ---------------------
+func (evl *Evaluator) resolveVirtualMethod(fnc *symbols.FunctionSymbol, instance interface{}) *symbols.FunctionSymbol {
+    // the instance needs to be a container, anything else would honestly not make much sense
+    cnt := instance.(*evalobjects.ContainerInstance)
+
+    // look for the method
+    for _, v := range cnt.Type.Container.Methods {
+        if v.Name() == fnc.Name() {
+            return v
+        }
+    }
+
+    // aw man we're fucked
+    return nil
 }
 
 // Run any sort of function body (function or method)
@@ -710,6 +751,16 @@ func (evl *Evaluator) evalCallExpression(expr *boundnodes.BoundCallExpressionNod
         args = append(args, evl.evalExpression(arg))
     } 
 
+    // is this a method? (a function call without prefix happening inside a container)
+    // like:
+    // container C {
+    //  function A() {...}
+    //  function B(): A();
+    // }
+    if expr.Function.FunctionKind == symbols.FT_METH {
+        return evl.callMethod(expr.Function, evl.stackFrame().This, args)
+    }
+
     // is this a native call?
     if expr.Function.IsVMFunction {
         // do a native call
@@ -757,6 +808,13 @@ func (evl *Evaluator) evalConversionExpression(expr *boundnodes.BoundConversionE
     res, ok := evalobjects.EvalConversion(val, expr.TargetType)
     if ok {
         return res
+    }
+
+    // provide some more helpful error messages for containers
+    if reflect.TypeOf(val).String() == "*evalobjects.ContainerInstance" {
+        cnt := val.(*evalobjects.ContainerInstance)
+        error.Report(error.NewError(error.RNT, expr.Source().Position(), "Unable to cast container instance of type %s to %s!", cnt.Type.Name(), expr.TargetType.Name()))
+        return nil
     }
 
     error.Report(error.NewError(error.RNT, expr.Source().Position(), "Unable to cast %s to %s!", reflect.TypeOf(val), expr.TargetType.Name()))

@@ -89,6 +89,7 @@ const (
     TT_KW_Container            TokenType = "TT_KW_Container"
     TT_KW_Constructor          TokenType = "TT_KW_Constructor"
     TT_KW_This                 TokenType = "TT_KW_This"
+    TT_KW_Trait                TokenType = "TT_KW_Trait"
 
     // Identifiers
     TT_Identifier              TokenType = "TT_Identifier"
@@ -115,6 +116,7 @@ var Keywords = map[string]TokenType {
     "make":        TT_KW_Make,
     "container":   TT_KW_Container,
     "Constructor": TT_KW_Constructor,
+    "trait":       TT_KW_Trait,
 }
 
 var Symbols = map[string]TokenType {

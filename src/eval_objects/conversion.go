@@ -325,5 +325,18 @@ func EvalConversion(val interface{}, to *symbols.TypeSymbol) (interface{}, bool)
         }
     }
 
+    // Casting to trait 
+    if to.TypeGroup == symbols.TRT {
+        switch v := val.(type) {
+        case *ContainerInstance:
+            // only cast if the container implements the trait
+            for _, t := range v.Type.Container.Traits {
+                if t.TraitType.Equal(to) {
+                    return v, true
+                }
+            }
+        }
+    }
+
     return nil, false
 }

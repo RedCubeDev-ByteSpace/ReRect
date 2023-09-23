@@ -1,0 +1,13 @@
+package main;
+load sys include;
+
+function main() {
+    A();
+    B();
+}
+
+function A() {
+    Print("Normal function");
+}
+
+function B(): Print("Single line function");

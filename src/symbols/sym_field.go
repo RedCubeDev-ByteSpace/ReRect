@@ -6,6 +6,10 @@ type FieldSymbol struct {
     VariableSymbol
 
     ParentContainer *ContainerSymbol
+    HasParentContainer bool
+
+    ParentTrait *TraitSymbol
+    HasParentTrait bool
 
     FieldName string
     FieldType *TypeSymbol
@@ -14,6 +18,16 @@ type FieldSymbol struct {
 func NewFieldSymbol(cnt *ContainerSymbol, name string, typ *TypeSymbol) *FieldSymbol {
     return &FieldSymbol{
         ParentContainer: cnt,
+        HasParentContainer: true,
+        FieldName: name,
+        FieldType: typ,
+    }
+}
+
+func NewTraitFieldSymbol(trt *TraitSymbol, name string, typ *TypeSymbol) *FieldSymbol {
+    return &FieldSymbol{
+        ParentTrait: trt,
+        HasParentTrait: true,
         FieldName: name,
         FieldType: typ,
     }

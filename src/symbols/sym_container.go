@@ -1,11 +1,12 @@
 package symbols
 
-// Container variable symbol
-// ---------------------
+// Container symbol
+// ----------------
 type ContainerSymbol struct {
     Symbol
 
     ParentPackage *PackageSymbol
+    Traits []*TraitSymbol
 
     ContainerName string
     ContainerType *TypeSymbol
@@ -14,6 +15,7 @@ type ContainerSymbol struct {
 
     Symbols []string
     Fields []*FieldSymbol
+    Methods []*FunctionSymbol
 }
 
 func NewContainerSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *ContainerSymbol {
@@ -27,6 +29,12 @@ func NewContainerSymbol(pck *PackageSymbol, name string, typ *TypeSymbol) *Conta
 
         // same here
         Symbols: make([]string, 0),
+
+        // same here
+        Traits: make([]*TraitSymbol, 0),
+
+        // same here
+        Methods: make([]*FunctionSymbol, 0),
     }
 
     // link the given type symbol to this container

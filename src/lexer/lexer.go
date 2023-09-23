@@ -321,6 +321,7 @@ func (lxr *Lexer) lexSymbol() {
 
     // which token could this be?
     var possibleToken TokenType = TT_EOF
+    tokText := ""
 
     for true {
         buffer += string(lxr.current())
@@ -331,20 +332,31 @@ func (lxr *Lexer) lexSymbol() {
             // we found at least one operator that starts with the current buffer
             if strings.HasPrefix(k, buffer) {
 
-                // store the match
-                possibleToken = v
+                // did we already find a match?
+                if found {
+                    // if this token is shorter than the last -> use this one
+                    if len(k) < len(tokText) {
+                        // store the match
+                        possibleToken = v
+                        tokText = k
+                    }
+
+                // if we havent found anything yet -> use this
+                } else {
+                    possibleToken = v
+                    tokText = k
+                }
 
                 // flag to continue to the next char
                 found = true
-
-                // step to the next char
-                lxr.step(1)
-                break
             }
         }
 
         // continue to next char
         if found {
+            // step to the next char
+            lxr.step(1)
+
             continue
         }
 

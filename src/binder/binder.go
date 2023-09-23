@@ -21,12 +21,140 @@ import (
 )
 
 // --------------------------------------------------------
+// Trait indexing
+// --------------------------------------------------------
+func IndexTraitTypes(file *packageprocessor.CompilationFile) {
+    // look through all member nodes
+    for _, v := range file.Members {
+        // we're only looking for trait nodes
+        if v.Type() != syntaxnodes.NT_Trait {
+            continue
+        }
+
+        trtMem := v.(*syntaxnodes.TraitNode)
+
+        // register a type symbol for this trait 
+        typ := symbols.NewTypeSymbol(trtMem.TraitName.Buffer, []*symbols.TypeSymbol{}, symbols.TRT, 0, nil)
+
+        // register a trait symbol for this trait 
+        trt := symbols.NewTraitSymbol(file.Package, trtMem.TraitName.Buffer, typ)
+
+        // register the type in the package
+        ok := file.Package.TryRegisterTrait(trt) 
+
+        if !ok {
+            error.Report(error.NewError(error.BND, trtMem.TraitName.Position, "Cannot register trait '%s'! A symbol with that name already exists!", trt.TraitName))
+            continue
+        }
+
+        file.Traits = append(file.Traits, trt)
+        file.TraitSrc[trt] = trtMem
+    }
+}
+
+func IndexTraitContents(file *packageprocessor.CompilationFile) {
+
+    // work through all traits
+    for _, trt := range file.Traits {
+        // get the source node for this trait
+        src := file.TraitSrc[trt]
+
+        // create a new collection for the trait fields and methods
+        fields := []*symbols.FieldSymbol{}
+        meths := []*symbols.FunctionSymbol{}
+
+        // bind all fields
+        for _, v := range src.Fields {
+            // resolve the field type
+            typ := LookupTypeClause(v.FieldType, file.Package)
+
+            // WAIT A MINUTE, DID WE HAVE A FIELD WITH THIS NAME ALREADY???
+            if slices.Contains(trt.Symbols, v.FieldName.Buffer) {
+                // jes -> DIE!!!! >:)
+                error.Report(error.NewError(error.BND, v.Position(), "Cannot register field '%s'! A symbol with that name already exists!", v.FieldName.Buffer))
+                continue
+            }
+
+            // nah, we good
+            sym := symbols.NewTraitFieldSymbol(trt, v.FieldName.Buffer, typ)
+
+            // add it to the list
+            fields = append(fields, sym)
+            trt.Symbols = append(trt.Symbols, sym.Name())
+        }
+
+        // bind all meths (methods, of course)
+        for _, fncMem := range src.Methods {
+
+            // is this a constructor?
+            if fncMem.IsConstructor {
+                // cringe
+                error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Illegal constructor outside of a container!"))
+                continue
+            }
+
+            // create parameter symbols
+            prms := []*symbols.ParameterSymbol{}
+            for i, prm := range fncMem.Parameters {
+                prms = append(prms, symbols.NewParameterSymbol(
+                    prm.ParameterName.Buffer,
+                    i,
+                    LookupTypeClause(prm.ParameterType, file.Package),
+                ))
+            }
+
+            ret := LookupTypeClause(fncMem.ReturnType, file.Package)
+
+            // register a function symbol for this method
+            fnc := symbols.NewMethodSymbol(
+                file.Package,
+                trt.TraitType,
+                fncMem.FunctionName.Buffer,
+                ret,
+                prms,
+            )
+
+            // if this is just a declaration -> mark this is needing to be called virtually
+            if !fncMem.HasBody {
+                fnc.NeedsVirtualCallToContainer = true
+            }
+
+            // okay but like, is this legal?
+            if slices.Contains(trt.Symbols, fnc.Name()) {
+                error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Cannot register method '%s'! A symbol with that name already exists!", fnc.Name()))
+                continue
+            }
+
+            // if it is -> register the name in this container
+            trt.Symbols = append(trt.Symbols, fnc.FuncName)
+            meths = append(meths, fnc)
+
+            // register it globally in this package
+            file.Package.TryRegisterFunction(fnc) 
+
+            // if this is a declaration -> do not register is as an actual function
+            if !fncMem.HasBody {
+                continue
+            }
+
+            // otherwise -> register method as a global function (because im lazy and they are treated equal anyways :) ) 
+            file.Functions = append(file.Functions, fnc)
+            file.FunctionBodiesSrc[fnc] = fncMem.Body
+        }
+
+        // store the container contents in the container
+        trt.Fields = fields
+        trt.Methods = meths
+    }
+}
+
+// --------------------------------------------------------
 // Container indexing
 // --------------------------------------------------------
 func IndexContainerTypes(file *packageprocessor.CompilationFile) {
     // look through all member nodes
     for _, v := range file.Members {
-        // we're only looking for function nodes
+        // we're only looking for container nodes
         if v.Type() != syntaxnodes.NT_Container {
             continue
         }
@@ -39,8 +167,44 @@ func IndexContainerTypes(file *packageprocessor.CompilationFile) {
         // register a container symbol for this container 
         cnt := symbols.NewContainerSymbol(file.Package, cntMem.ContainerName.Buffer, typ)
 
-        // link the type symbol to the container
-        typ.Container = cnt
+        // now: look up the traits we got
+        for _, v := range cntMem.Traits {
+            // look the trait up
+
+            var trt *symbols.TraitSymbol
+
+            if v.HasPackage {
+                // look up the package
+                pack := LookupPackageInPackage(file.Package, v.Package.Buffer)
+
+                // aw man no package
+                if pack == nil {
+                    error.Report(error.NewError(error.BND, v.Package.Position, "Could not find a package called '%s'", v.Package.Buffer))
+                    continue
+
+                // aw man a package
+                } else {
+                    trt = LookupTraitInPackage(v.TraitName.Buffer, pack)
+
+                    if trt == nil {
+                        error.Report(error.NewError(error.BND, v.Position(), "Could not find a trait called '%s' in package '%s'!", v.TraitName.Buffer, v.Package.Buffer))
+                        continue
+                    }
+                } 
+
+            // if theres no package specified -> try in the current one
+            } else {
+                trt = LookupTrait(v.TraitName.Buffer, file.Package)
+
+                if trt == nil {
+                    error.Report(error.NewError(error.BND, v.Position(), "Could not find a trait called '%s'!", v.TraitName.Buffer))
+                    continue
+                }
+            }
+
+            // if we got to here then we found a trait
+            cnt.Traits = append(cnt.Traits, trt)
+        }
 
         // register the type in the package
         ok := file.Package.TryRegisterContainer(cnt) 
@@ -56,12 +220,16 @@ func IndexContainerTypes(file *packageprocessor.CompilationFile) {
 }
 
 func IndexContainerContents(file *packageprocessor.CompilationFile) {
-    fields := []*symbols.FieldSymbol{}
-    hasConstructor := false
 
     // work through all containers
     for _, cnt := range file.Containers {
+        // get the original source node of this container
         src := file.ContainerSrc[cnt]
+
+        // create a new fields collection and a flag for keeping track of constructors
+        fields := []*symbols.FieldSymbol{}
+        meths := []*symbols.FunctionSymbol{}
+        hasConstructor := false
 
         // bind all fields
         for _, v := range src.Fields {
@@ -86,8 +254,16 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
         // bind all meths (methods, of course)
         for _, fncMem := range src.Methods {
 
+            // Do we have multiple constructors?
             if fncMem.IsConstructor && hasConstructor {
                 error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Only one constructor per container is allowed!"))
+                continue
+            }
+
+            // is this a function declaration?
+            if !fncMem.HasBody {
+                // cringe
+                error.Report(error.NewError(error.BND, fncMem.Position(), "Illegal function declaration outside of a trait!"))
                 continue
             }
 
@@ -139,14 +315,223 @@ func IndexContainerContents(file *packageprocessor.CompilationFile) {
             // also register the name in this container
             cnt.Symbols = append(cnt.Symbols, fnc.FuncName)
 
+            // also store it in our local meths array (for trait checking)
+            meths = append(meths, fnc)
+
             // if its a constructor -> also register it in the container symbol
             if fncMem.IsConstructor {
                 cnt.Constructor = fnc
             }
         }
 
+        // If all of that was successful...
+
+        // ------------------------------------------------
+        // Apply all traits
+        // ------------------------------------------------
+
+        // First:
+        // Implement all fields
+        // --------------------
+        for i, trt := range cnt.Traits {
+            trtSrc := src.Traits[i]
+
+            // implement fields one by one
+            for _, fld := range trt.Fields {
+
+                // does this container already have a field with this name?
+                var containerField *symbols.FieldSymbol
+                for _, f := range fields {
+                    if f.FieldName == fld.FieldName {
+                        containerField = f
+                    }
+                }
+
+                // if so...
+                if containerField != nil {
+
+                    // do the datatypes match?
+                    if !containerField.VarType().Equal(fld.VarType()) {
+
+                        // was this field added by another trait? (this is just for nicer error messages)
+                        if containerField.HasParentTrait {
+                            error.Report(error.NewError(error.BND, trtSrc.Position(), "Unable to apply trait '%s'! A field with the name '%s' has already been added by trait '%s' with a different datatype!", trt.Name(), fld.Name(), containerField.ParentTrait.Name()))
+                            continue
+
+                        // otherwise: a less complicated error message
+                        } else {
+                            error.Report(error.NewError(error.BND, trtSrc.Position(), "Unable to apply trait '%s'! The container '%s' already defines a field called '%s' with a different type!", trt.Name(), cnt.Name(), fld.Name()))
+                            continue
+                        }
+                    }
+
+                    // if the datatypes match -> everything is cool
+                    // we dont need to add another field, the field required by this trait has already been added
+                    continue
+                }
+
+                // ooootherwise -> we need to create this field
+
+                // WAIT A MINUTE, DID WE HAVE A SYMBOL WITH THIS NAME ALREADY???
+                if slices.Contains(cnt.Symbols, fld.Name()) {
+                    // jes -> DIE!!!! >:)
+                    error.Report(error.NewError(error.BND, trtSrc.Position(), "Cannot register field '%s' of trait '%s'! A symbol with that name already exists!", fld.Name(), trt.Name()))
+                    continue
+                }
+
+                // nah, we good
+                sym := symbols.NewFieldSymbol(cnt, fld.Name(), fld.FieldType)
+
+                // add the trait in here (in case another trait also defines this field)
+                sym.HasParentTrait = true
+                sym.ParentTrait = trt
+
+                // add it to the list
+                fields = append(fields, sym)
+                cnt.Symbols = append(cnt.Symbols, sym.FieldName)
+            } 
+        }
+
+        // Secondly: 
+        // Implement all pre-defined Methods
+        // ---------------------------------
+        // These are methods given by the trait, which already have an implementation.
+        // Because of this the container is not allowed to define a function with the same name, even if its
+        // contents are identical / equvilant.
+        // These methods are standardised between trait implementers.
+        // --------------------------------------------------------------------------------------------------
+
+        for i, trt := range cnt.Traits {
+            trtSrc := src.Traits[i]
+
+            // include these methods one by one 
+            for _, meth := range trt.Methods {
+                // we only care for already implemented methods
+                if meth.NeedsVirtualCallToContainer {
+                    continue
+                }
+
+                // does this container already have a method with this name?
+                isConflicting := false
+                for _, f := range meths {
+                    if f.FuncName == meth.FuncName {
+                        // ILLEGAL!!!
+
+                        // where did this method come from?
+                        // did another trait add it? (this is just for more helpful error messages)
+                        if f.SourceTrait != nil {
+                            error.Report(error.NewError(error.BND, trtSrc.Position(), "Cannot add method '%s' of trait '%s'! A method with the same name has already been added by trait '%s'!", meth.Name(), trt.Name(), f.SourceTrait.Name()))
+                        } else {
+                            error.Report(error.NewError(error.BND, trtSrc.Position(), "Cannot add method '%s' of trait '%s'! The container already implements a method with that name!", meth.Name(), trt.Name()))
+                        }
+
+                        isConflicting = true
+                        break
+                    }
+                }
+
+                if isConflicting {
+                    continue
+                }
+
+                // if everything is fine -> we need to import this method
+
+                // WAIT A MINUTE, DID WE HAVE A SYMBOL WITH THIS NAME ALREADY???
+                if slices.Contains(cnt.Symbols, meth.Name()) {
+                    // yea :(
+                    error.Report(error.NewError(error.BND, trtSrc.Position(), "Cannot register method '%s' of trait '%s'! A symbol with that name already exists!", meth.Name(), trt.Name()))
+                    continue
+                }
+
+                // if everything is looking good -> import!!!!!
+                // --------------------------------------------
+
+                // create a copy of our original trait method symbol, but change the source type
+                fnc := symbols.NewMethodSymbol(
+                    meth.ParentPackage,
+                    cnt.ContainerType,
+                    meth.FuncName,
+                    meth.ReturnType,
+                    meth.Parameters,
+                )
+
+                // remember from which trait this method came (for better error reporting)
+                fnc.SourceTrait = trt
+
+                // mark this symbol as a redirection to another method and add a ref to that method
+                fnc.NeedsVirtualCallToTrait = true
+                fnc.TraitSourceMethod = meth
+
+                // register it globally in this package
+                file.Package.TryRegisterFunction(fnc) 
+
+                // also register the name in this container
+                cnt.Symbols = append(cnt.Symbols, fnc.FuncName)
+
+                // also store it in our local meths array (for trait checking)
+                meths = append(meths, fnc)
+            }
+        }
+
+        // Third but not third: (it is third)
+        // Make sure that all trait-declared methods have been implemented
+        // (this is the easiest step because all it does is complain)
+
+        for i, trt := range cnt.Traits {
+            trtSrc := src.Traits[i]
+
+            // include these methods one by one 
+            for _, meth := range trt.Methods {
+                // we only care about declarations
+                if meth.NeedsVirtualCallToTrait {
+                    continue
+                }
+
+                // did this container implement the declaration?
+                var fnc *symbols.FunctionSymbol
+                for _, f := range meths {
+                    if f.FuncName == meth.FuncName {
+                        // we found something
+                        fnc = f
+                        break
+                    }
+                }
+
+                // if we did not find an implementation -> complain
+                if fnc == nil {
+                    error.Report(error.NewError(error.BND, trtSrc.Position(), "Container '%s' did not implement method '%s' which is required by trait '%s'!", cnt.Name(), meth.Name(), trt.Name()))
+                    continue
+                }
+
+                // if we found a method with the correct name -> make sure the signatures match up
+                // -------------------------------------------------------------------------------
+                
+                if !meth.ReturnType.Equal(fnc.ReturnType) {
+                    error.Report(error.NewError(error.BND, trtSrc.Position(), "Container '%s' did not implement method '%s' correctly. Trait '%s' requires a return type of '%s',got '%s' instead!", cnt.Name(), meth.Name(), trt.Name(), meth.ReturnType.Name(), fnc.ReturnType.Name()))
+                    continue
+                }
+
+                if len(meth.Parameters) != len(fnc.Parameters) {
+                    error.Report(error.NewError(error.BND, trtSrc.Position(), "Container '%s' did not implement method '%s' correctly. Trait '%s' requires %d parameters, got %d instead!", cnt.Name(), meth.Name(), trt.Name(), len(meth.Parameters), len(fnc.Parameters)))
+                    continue
+                }
+
+                for i := range meth.Parameters {
+                    if !meth.Parameters[i].VarType().Equal(fnc.Parameters[i].VarType()) {
+                        error.Report(error.NewError(error.BND, trtSrc.Position(), "Container '%s' did not implement method '%s' correctly. Trait '%s' requires the parameter at index %d to be of type '%s', got '%s' instead!", cnt.Name(), meth.Name(), trt.Name(), i, meth.Parameters[i].VarType().Name(), fnc.Parameters[i].VarType().Name()))
+                        break
+                    }
+                }
+
+                // otherwise we good
+            }
+        }
+
+
+
         // store the container contents in the container
         cnt.Fields = fields
+        cnt.Methods = meths
     }
 }
 
@@ -167,6 +552,13 @@ func IndexFunctions(file *packageprocessor.CompilationFile) {
         if fncMem.IsConstructor {
             // cringe
             error.Report(error.NewError(error.BND, fncMem.FunctionName.Position, "Illegal constructor outside of a container!"))
+            continue
+        }
+
+        // is this a function declaration?
+        if !fncMem.HasBody {
+            // cringe
+            error.Report(error.NewError(error.BND, fncMem.Position(), "Illegal function declaration outside of a trait!"))
             continue
         }
 
@@ -275,9 +667,20 @@ func BindFunctions(file *packageprocessor.CompilationFile) {
         if sym.FunctionKind == symbols.FT_METH {
             bin.CurrentType = sym.MethodSource
 
+            // is this method part of a container or a trait?
+            // ----------------------------------------------
+
             // also register all fields as variables
             if bin.CurrentType.TypeGroup == symbols.CONT {
                 for _, v := range bin.CurrentType.Container.Fields {
+                    bin.CurrentScope.RegisterVariable(v)
+                } 
+
+                // and register an instance variable ("this")
+                bin.CurrentScope.RegisterVariable(symbols.NewInstanceSymbol(bin.CurrentType))
+
+            } else if bin.CurrentType.TypeGroup == symbols.TRT {
+                for _, v := range bin.CurrentType.Trait.Fields {
                     bin.CurrentScope.RegisterVariable(v)
                 } 
 
@@ -926,13 +1329,26 @@ func (bin *Binder) bindAccessExpression(expr *syntaxnodes.AccessExpressionNode) 
     src := bin.bindExpression(expr.Expression)
 
     // damn but like, is this even a container?
-    if src.ExprType().TypeGroup != symbols.CONT {
-        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Unable to access a field on non container type '%s'!", src.ExprType().Name()))
+    if src.ExprType().TypeGroup != symbols.CONT && src.ExprType().TypeGroup != symbols.TRT {
+        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Unable to access a field on non container or trait type '%s'!", src.ExprType().Name()))
         return boundnodes.NewBoundErrorExpressionNode(expr)
     }
 
-    // look up the field
-    fld := LookupFieldInContainer(expr.Identifier.Buffer, src.ExprType().Container) 
+    var fld *symbols.FieldSymbol
+
+    if src.ExprType().TypeGroup == symbols.TRT {
+        // look up the field in a trait
+        fld = LookupFieldInTrait(expr.Identifier.Buffer, src.ExprType().Trait) 
+    } else {
+        // look up the field in a container
+        fld = LookupFieldInContainer(expr.Identifier.Buffer, src.ExprType().Container) 
+    }
+
+    // did we actually find something?
+    if fld == nil {
+        error.Report(error.NewError(error.BND, expr.Identifier.Position, "Did not find field '%s' in container or trait type '%s'!", expr.Identifier.Buffer, src.ExprType().Name()))
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
 
     // ok cool
     return boundnodes.NewBoundAccessFieldExpressionNode(expr, src, fld)
@@ -985,6 +1401,12 @@ func (bin *Binder) bindMakeExpression(expr *syntaxnodes.MakeExpressionNode) boun
         cnt = LookupContainer(expr.Container.Buffer, bin.CurrentPackage)
     }
 
+    // did we find it?
+    if cnt == nil {
+        error.Report(error.NewError(error.BND, expr.Container.Position, "Unable to find a container called '%s'!", expr.Container.Buffer)) 
+        return boundnodes.NewBoundErrorExpressionNode(expr)
+    }
+
     initializer := make(map[*symbols.FieldSymbol]boundnodes.BoundExpressionNode)
     args := []boundnodes.BoundExpressionNode{}
 
@@ -992,6 +1414,12 @@ func (bin *Binder) bindMakeExpression(expr *syntaxnodes.MakeExpressionNode) boun
     if expr.HasInitializer {
         for _, v := range expr.Initializer {
             field := LookupFieldInContainer(v.FieldName.Buffer, cnt)
+
+            if field == nil {
+                error.Report(error.NewError(error.BND, v.FieldName.Position, "Unable to find field '%s' in container '%s'!", v.FieldName.Buffer, cnt.Name())) 
+                return boundnodes.NewBoundErrorExpressionNode(expr)
+            }
+
             val := bin.bindExpression(v.Value)
 
             // make sure the types match up
@@ -1073,6 +1501,12 @@ func LookupType(name string, pos span.Span, pck *symbols.PackageSymbol, canfail 
         return cnt.ContainerType
     }
 
+    // lookup traits
+    trt := LookupTrait(name, pck)
+    if trt != nil {
+        return trt.TraitType
+    }
+
     // if this allowed to fail -> do that
     if canfail {
         return nil
@@ -1118,6 +1552,13 @@ func LookupTypeClause(typ *syntaxnodes.TypeClauseNode, pack *symbols.PackageSymb
             return compunit.GlobalDataTypeRegister["error"]
         }
 
+        // try looking up a trait first
+        trt := LookupTraitInPackage(typ.TypeName.Buffer, pck)
+        if trt != nil {
+            // we found something? great success!
+            return trt.TraitType
+        }
+
         // look up the container
         cnt := LookupContainerInPackage(typ.TypeName.Buffer, pck)
 
@@ -1140,6 +1581,38 @@ func createArrayType(subtype *symbols.TypeSymbol) *symbols.TypeSymbol {
 }
 
 // --------------------------------------------------------
+// Trait Lookup
+// --------------------------------------------------------
+func LookupTrait(name string, pck *symbols.PackageSymbol) *symbols.TraitSymbol {
+    trt := LookupTraitInPackage(name, pck)
+    if trt != nil {
+        return trt
+    }
+
+    // lookup containers in loaded packages
+    for _, packname := range pck.IncludedPackages {
+        pack := pck.LoadedPackages[packname]
+        trt := LookupTraitInPackage(name, pack)
+        if trt != nil {
+            return trt
+        }
+    }
+
+    // got nothin man
+    return nil
+}
+
+func LookupTraitInPackage(name string, pack *symbols.PackageSymbol) *symbols.TraitSymbol {
+    for _, v := range pack.Traits {
+        if v.TraitName == name {
+            return v
+        }
+    }
+
+    return nil
+}
+
+// --------------------------------------------------------
 // Container Lookup
 // --------------------------------------------------------
 func (bin *Binder) LookupContainerInPackage(pck string, cnt string) *symbols.ContainerSymbol {
@@ -1159,7 +1632,9 @@ func LookupContainer(name string, pck *symbols.PackageSymbol) *symbols.Container
     }
 
     // lookup containers in loaded packages
-    for _, pack := range pck.LoadedPackages {
+    for _, packname := range pck.IncludedPackages {
+        pack := pck.LoadedPackages[packname]
+
         cnt := LookupContainerInPackage(name, pack)
         if cnt != nil {
             return cnt
@@ -1193,6 +1668,15 @@ func LookupFieldInContainer(name string, cnt *symbols.ContainerSymbol) *symbols.
     return nil
 }
 
+func LookupFieldInTrait(name string, trt *symbols.TraitSymbol) *symbols.FieldSymbol {
+    for _, v := range trt.Fields {
+        if v.FieldName == name {
+            return v
+        }
+    }
+
+    return nil
+}
 
 // --------------------------------------------------------
 // Global lookup

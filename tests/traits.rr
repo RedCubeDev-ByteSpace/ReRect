@@ -1,0 +1,67 @@
+package main;
+load sys include;
+
+function main() {
+    Print("ok cool");
+
+    var cnt <- make SomeContainer {
+        SomeInt  <- 100,
+        SomeBool <- true
+    };
+
+    Print(string(cnt->SomeInt));
+    Print(string(cnt->SomeBool));
+
+    var smt <- SomeMethodTrait(cnt);
+    //var sot <- SomeOtherContainer(smt);
+
+    smt->C();
+}
+
+container SomeContainer (SomeMethodTrait, SomeFieldTrait) {
+    SomeInt int;
+
+    function A() {
+        Print("A implemented in SomeContainer");
+    }
+
+    function C() {
+        Print(NewField);
+        B();
+        Print(NewField);
+    }
+}
+
+container SomeOtherContainer (SomeMethodTrait) {
+    function A(): return;
+    function C(): return;
+}
+
+trait SomeFieldTrait {
+    SomeInt int;
+    SomeBool bool;
+}
+
+trait SomeConflictingFieldTrait {
+    SomeBool long;
+}
+
+trait SomeMethodTrait {
+    SomeInt int;
+    NewField string;
+
+    function A();
+    function B() {
+        Print(string(this->SomeInt));
+        NewField <- "gaming";
+        A();
+        C();
+    }
+    function C();
+}
+
+trait SomeConflictingMethodTrait {
+    function B() {
+        Print("A");
+    }
+}
